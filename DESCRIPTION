@@ -2,7 +2,7 @@ Package: BVSNLP
 Type: Package
 Title: Bayesian Variable Selection in High Dimensional Settings using
         Non-Local Prior
-Version: 0.9.5
+Version: 0.9.6
 Author: Amir Nikooienejad [aut, cre]
 Maintainer: Amir Nikooienejad <amir@stat.tamu.edu>
 Description: Variable/Feature selection in high or ultra-high dimensional
@@ -26,6 +26,6 @@ Imports: Rcpp, foreach, parallel
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen, RcppNumerical
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2017-12-18 06:05:02 UTC; AmirNik
+Packaged: 2017-12-19 19:01:15 UTC; AmirNik
 Repository: CRAN
-Date/Publication: 2017-12-18 12:12:28 UTC
+Date/Publication: 2017-12-19 20:23:37 UTC

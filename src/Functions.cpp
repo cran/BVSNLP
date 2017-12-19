@@ -413,11 +413,13 @@ int my_find(arma::vec a, double num){
 //==================================================//
 
 double calc_key(arma::uvec b){
-  double out = 0;
-  arma::uvec a = sort(b);
+  double out = 0.0;
+  arma::uvec a = arma::sort(b);
   int s = a.size();
+  double val;
   for(int i=0; i < s; i++){
-    out = out + pow(2,log(a(i)+1)) + M_PI*log(a(i)+1);
+    val = a(i) + 1.0;
+    out = out + pow(2,log(val)) + M_PI*log(val);
   }
   return(out);
 }
