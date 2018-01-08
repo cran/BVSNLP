@@ -1,4 +1,4 @@
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage("Bayesian Variable Selection using Non-Local priors for survival and logistic regression data.
-Loading Version 0.9.6")
+Loading Version 0.9.7")
 }

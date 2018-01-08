@@ -32,7 +32,7 @@
 #' Nonlocal Priors. arXiv preprint, arXiv:1712.02964.
 #' @examples
 #' ### Simulating Logistic Regression Data
-#' n <- 300
+#' n <- 400
 #' p <- 1000
 #' set.seed(123)
 #' Sigma <- diag(p)

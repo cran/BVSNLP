@@ -1420,30 +1420,6 @@ arma::mat sort_TS(const arma::mat& TS) {
 }
 //==================================================//
 
-arma::mat KMestimate_orig(const arma::mat& TS) {
-  arma::vec times = TS.col(0);
-  arma::vec status = TS.col(1);
-  arma::vec ut = arma::unique(times);
-  int n = TS.n_rows;
-  int n1 = ut.n_elem;
-  arma::mat kmes(n1,2);
-  int d, ar;
-  
-  double st = 1;
-  for(int i=0; i < n1; i++){
-    d=0; ar=0;
-    for(int j=0; j < n; j++){
-      ar += (ut(i) <= times(j));
-      d += (ut(i) == times(j)) && (status(j));
-    }
-    st = st * (1.0 - (double) d/ (double) ar);
-    kmes(i,0) = st;
-  }
-  kmes.col(1) = ut;
-  return(kmes);
-}
-//==================================================//
-
 arma::mat KMestimate(const arma::mat& TS){
   arma::vec times = TS.col(0);
   arma::vec status = 1-TS.col(1);
@@ -1493,7 +1469,7 @@ arma::vec calc_marker(arma::mat xcols_tr, arma::mat xcols_te, arma::vec coefs)
 {
   arma::vec marker;
   arma::mat mtr = mean(xcols_tr);
-  double m2 = dot(mtr,coefs);
+  double m2 = arma::dot(mtr,coefs);
   arma::mat m1 = xcols_te * coefs;
   marker = m1-m2;
   return(marker);
@@ -1524,7 +1500,7 @@ Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const a
   }
   arma::mat Markers = tmp_Markers;
   
-  arma::vec thresh = arma::unique(Markers.col(2));
+  arma::vec thresh = arma::unique(Markers.col(0));
   int n_th = thresh.n_elem;
   
   int P = sum(y_te); int N = n_new-P;
@@ -1573,7 +1549,7 @@ arma::vec aucBMA_survival(const arma::mat& X_tr, const arma::mat& TS_tr, const a
   Rcpp::NumericVector tmp_cfs;
   int n_t = times.n_elem;
   int n_new = TS_te.n_rows;
-  arma::vec auc(n_t);
+  arma::vec auc; auc.zeros(n_t);
   
   arma::mat Markers(n_new,k), xcols_tr, xcols_te;
   for (int i=0; i < k; i++){

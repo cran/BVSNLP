@@ -102,15 +102,17 @@ component is always for the intercept.}
 Barbieri et. al., this is defined to be the model consisting of those
 variables whose posterior inclusion probability is at least 1/2. The order
 of columns is similar to that is explained for \code{HPM}.}
-\item{max_prob_vec}{A \code{100} by \code{1} vector of unnormalized
-probabilities of the first 100 models with highest posterior probability
-among all visited models.}
-\item{max_models}{A list of length 100 containing top 100 models
-corresponding to \code{max_prob_vec} vector. Each entry of this list
-contains the indices of covariates for the model with posterior probability
-reported in the corresponding entry in \code{max_prob_vec}. Note that the
-intercept is always used along with the selected columns and in calculating
-the probabilities in \code{max_prob_vec}.}
+\item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
+probabilities of the first 1000 models with highest posterior probability
+among all visited models. If the total number of visited models is less than
+1000, then the length of this vector would be equal to \code{num_vis_models}
+. Note that the intercept is always used in calculating the probabilities
+in this vector.}
+\item{max_models}{A list containing models corresponding to
+\code{max_prob_vec} vector. Each entry of this list contains the indices of
+covariates for the model with posterior probability reported in the
+corresponding entry in \code{max_prob_vec}. The intercept column is not
+shown in this list as it is present in all of the models.}
 \item{inc_probs}{A vector of length \code{p+1} containing the posterior
 inclusion probability for each covariate in the design matrix. The order of
 columns is with respect to processed design matrix, \code{des_mat}.}
@@ -166,13 +168,15 @@ the outputs that can be checked in \code{des_mat}.}
 Barbieri et. al., this is defined to be the model consisting of those
 variables whose posterior inclusion probability is at least 1/2. The order
 of columns is similar to that is explained for \code{HPM}.}
-\item{max_prob_vec}{A \code{100} by \code{1} vector of unnormalized
-probabilities of the first 100 models with highest posterior probability
-among all visited models.}
-\item{max_models}{A list of length 100 containing top 100 models
-corresponding to \code{max_prob_vec} vector. Each entry of this list
-contains the indices of covariates for the model with posterior probability
-reported in the corresponding entry in \code{max_prob_vec}.}
+\item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
+probabilities of the first 1000 models with highest posterior probability
+among all visited models. If the total number of visited models is less than
+1000, then the length of this vector would be equal to \code{num_vis_models}
+.}
+\item{max_models}{A list containing models corresponding to
+\code{max_prob_vec} vector. Each entry of this list contains the indices of
+covariates for the model with posterior probability reported in the
+corresponding entry in \code{max_prob_vec}.}
 \item{inc_probs}{A \code{p} by \code{1} vector containing the posterior
 inclusion probability for each covariate in the design matrix. The order of
 columns is with respect to processed design matrix, \code{des_mat}.}

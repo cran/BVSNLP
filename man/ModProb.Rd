@@ -43,7 +43,7 @@ non zero coefficients and beta binomial prior for the model space.
 }
 \examples{
 ### Simulating Logistic Regression Data
-n <- 300
+n <- 400
 p <- 1000
 set.seed(123)
 Sigma <- diag(p)

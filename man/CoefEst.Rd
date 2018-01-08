@@ -39,7 +39,7 @@ uses the inverse moment nonlocal prior (iMOM) for non zero coefficients.
 }
 \examples{
 ### Simulating Survival Data
-n <- 300
+n <- 400
 p <- 1000
 lambda <- 0.8
 cens_rate <- 0.27

@@ -94,15 +94,17 @@
 #' Barbieri et. al., this is defined to be the model consisting of those
 #' variables whose posterior inclusion probability is at least 1/2. The order
 #' of columns is similar to that is explained for \code{HPM}.}
-#' \item{max_prob_vec}{A \code{100} by \code{1} vector of unnormalized
-#' probabilities of the first 100 models with highest posterior probability
-#' among all visited models.}
-#' \item{max_models}{A list of length 100 containing top 100 models
-#' corresponding to \code{max_prob_vec} vector. Each entry of this list
-#' contains the indices of covariates for the model with posterior probability
-#' reported in the corresponding entry in \code{max_prob_vec}. Note that the
-#' intercept is always used along with the selected columns and in calculating
-#' the probabilities in \code{max_prob_vec}.}
+#' \item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
+#' probabilities of the first 1000 models with highest posterior probability
+#' among all visited models. If the total number of visited models is less than
+#' 1000, then the length of this vector would be equal to \code{num_vis_models}
+#' . Note that the intercept is always used in calculating the probabilities
+#' in this vector.}
+#' \item{max_models}{A list containing models corresponding to
+#' \code{max_prob_vec} vector. Each entry of this list contains the indices of
+#' covariates for the model with posterior probability reported in the
+#' corresponding entry in \code{max_prob_vec}. The intercept column is not
+#' shown in this list as it is present in all of the models.}
 #' \item{inc_probs}{A vector of length \code{p+1} containing the posterior
 #' inclusion probability for each covariate in the design matrix. The order of
 #' columns is with respect to processed design matrix, \code{des_mat}.}
@@ -158,13 +160,15 @@
 #' Barbieri et. al., this is defined to be the model consisting of those
 #' variables whose posterior inclusion probability is at least 1/2. The order
 #' of columns is similar to that is explained for \code{HPM}.}
-#' \item{max_prob_vec}{A \code{100} by \code{1} vector of unnormalized
-#' probabilities of the first 100 models with highest posterior probability
-#' among all visited models.}
-#' \item{max_models}{A list of length 100 containing top 100 models
-#' corresponding to \code{max_prob_vec} vector. Each entry of this list
-#' contains the indices of covariates for the model with posterior probability
-#' reported in the corresponding entry in \code{max_prob_vec}.}
+#' \item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
+#' probabilities of the first 1000 models with highest posterior probability
+#' among all visited models. If the total number of visited models is less than
+#' 1000, then the length of this vector would be equal to \code{num_vis_models}
+#' .}
+#' \item{max_models}{A list containing models corresponding to
+#' \code{max_prob_vec} vector. Each entry of this list contains the indices of
+#' covariates for the model with posterior probability reported in the
+#' corresponding entry in \code{max_prob_vec}.}
 #' \item{inc_probs}{A \code{p} by \code{1} vector containing the posterior
 #' inclusion probability for each covariate in the design matrix. The order of
 #' columns is with respect to processed design matrix, \code{des_mat}.}
@@ -314,9 +318,10 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       all_probs <- all_probs[uinds]
       list_vis_covs <- VisCovs[uinds]
 
+      outnum <- min(nvm,1000)
       sout <- sort(all_probs,decreasing = T,index.return=T)
-      MaxMargs <- sout$x[1:100]
-      minds <- sout$ix[1:100]
+      MaxMargs <- sout$x[1:outnum]
+      minds <- sout$ix[1:outnum]
       max_marg <- MaxMargs[1]; indmax <- minds[1]
       sel_model <- list_vis_covs[[indmax]]
       
@@ -326,7 +331,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       sel_model <- sel_model[-1]
       
       MaxModels <- list(NULL)
-      for (i in 1:100){
+      for (i in 1:outnum){
         MaxModels[[i]] <- list_vis_covs[[minds[i]]][-1]
       }
       inc_probs <- inc_prob_calc(all_probs,list_vis_covs,p+1)
@@ -404,9 +409,8 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     }
   }
 
+### ================================================================= 
   if(family=="survival"){
-
-    # ==================== Data pre-processing =======================
     TS <- resp
     time <- TS[, 1]
     status <- TS[, 2]
@@ -494,14 +498,15 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     all_probs <- All_Probs[uinds]
     list_vis_covs <- VisCovs[uinds]
 
+    outnum <- min(num_vis_models,1000);
     sout <- sort(all_probs,decreasing = T,index.return=T)
-    MaxMargs <- sout$x[1:100]
-    minds <- sout$ix[1:100]
+    MaxMargs <- sout$x[1:outnum]
+    minds <- sout$ix[1:outnum]
     max_marg <- MaxMargs[1]; indmax <- minds[1]
     sel_model <- list_vis_covs[[indmax]] + 1
 
     MaxModels <- list(NULL)
-    for (i in 1:100){
+    for (i in 1:outnum){
       MaxModels[[i]] <- list_vis_covs[[minds[i]]] + 1
     }
 
