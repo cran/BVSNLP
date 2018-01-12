@@ -50,7 +50,7 @@ PreProcess <- function(X){
   XX2 <- Xin
   bincols <- which(apply(Xin, 2, function(x) {all(na.omit(x) %in% 0:1)}))
   if (length(bincols)){
-    XX2[,bincols] <- scale(Xin[,bincols])
+    XX2[,-bincols] <- scale(Xin[,-bincols])
   }else{
     XX2 <- scale(Xin)
   }
