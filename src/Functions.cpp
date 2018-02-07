@@ -228,7 +228,7 @@ public:
     const double neglogprior = beta2.array().sum();
     const double neglogposterior = negloglik + neglogprior;
     
-
+    
     Eigen::VectorXd negloglikgrad  = (XS-Xtr) * status;
     Eigen::VectorXd neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array(); 
     
@@ -1149,9 +1149,10 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
   Rcpp::List hash_cand_covs(100000);
   arma::vec hash_prob = arma::zeros<arma::vec>(100000);
   arma::vec hash_prob_sub, hash_key_sub;
-  int count = 0, k, add_size, neg_size;
+  int count = 0, k, add_size, neg_size, k1, d1;
   int count_cand = 0;
   int  shifter, madd, mneg, foundkey, foundkey_cand;
+  bool no_add_flag = false;
   
   thiskey = calc_key(cur_cols);
   xx = ordexmat.cols(cur_cols);
@@ -1193,7 +1194,9 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
         const MapVec Cur_XBeta(cxbeta.memptr(),n);
         tmp_cur_cols = cur_cols.tail(k-nf);
         kc_cols = c_setdiff(idx,tmp_cur_cols);
-        max_ind = find_max_utils(ordexmat,kc_cols,Status,Cur_XBeta,d);
+        k1 = kc_cols.size();
+        d1 = std::min(k1,d);
+        max_ind = find_max_utils(ordexmat,kc_cols,Status,Cur_XBeta,d1);
         cand_add_cols = kc_cols(max_ind);
         hash_cand_covs[count_cand] = cand_add_cols;
         count_cand++;
@@ -1220,38 +1223,44 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
       add_cand = cur_cols; add_cand.resize(k+1);
       add_probs.set_size(add_size), neg_probs.set_size(neg_size);
       
-      for (int i=0; i < add_size; i++){
-        add_cand(k) = cand_add_cols(i);
-        thiskey = calc_key(add_cand);
-        foundkey = my_find(hash_key,thiskey);
-        if(foundkey == -1){
-          hash_key(count) = thiskey;
-          xx = ordexmat.cols(add_cand);
-          bhat = cox_beta_est(xx, Status,tau,r);
-          if (bhat[0]==-999999){
-            tmp_prob = -999999999;
-          } else {
-            betahat = Rcpp::as<arma::vec>(bhat);
-            MapMat XX(xx.memptr(), n, k+1);
-            tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+      if (add_size == 0){
+        add_probs.set_size(1);
+        add_probs(0) = -999999999;
+        no_add_flag=true;
+      } else {
+        for (int i=0; i < add_size; i++){
+          add_cand(k) = cand_add_cols(i);
+          thiskey = calc_key(add_cand);
+          foundkey = my_find(hash_key,thiskey);
+          if(foundkey == -1){
+            hash_key(count) = thiskey;
+            xx = ordexmat.cols(add_cand);
+            bhat = cox_beta_est(xx, Status,tau,r);
+            if (bhat[0]==-999999){
+              tmp_prob = -999999999;
+            } else {
+              betahat = Rcpp::as<arma::vec>(bhat);
+              MapMat XX(xx.memptr(), n, k+1);
+              tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+            }
+            hash_prob(count) = tmp_prob;
+            tmp_chain = arma::zeros<arma::urowvec>(p);
+            tmp_chain(add_cand) = arma::ones<arma::urowvec>(k+1);
+            hash_vis_covs[count] = arma::find(tmp_chain);
+            
+            if (tmp_prob > max_prob ){
+              max_prob = tmp_prob;
+              max_chain = tmp_chain;
+            }
+            count++;
+          }else{
+            tmp_prob = hash_prob(foundkey);
           }
-          hash_prob(count) = tmp_prob;
-          tmp_chain = arma::zeros<arma::urowvec>(p);
-          tmp_chain(add_cand) = arma::ones<arma::urowvec>(k+1);
-          hash_vis_covs[count] = arma::find(tmp_chain);
-          
-          if (tmp_prob > max_prob ){
-            max_prob = tmp_prob;
-            max_chain = tmp_chain;
-          }
-          count++;
-        }else{
-          tmp_prob = hash_prob(foundkey);
+          add_probs(i) = tmp_prob;
         }
-        add_probs(i) = tmp_prob;
       }
       
-      if (k > 1) {
+      if (neg_size > 1) {
         for (int i=0; i < neg_size; i++){
           neg_cand = cur_cols;
           neg_cand.shed_row(nf+i);
@@ -1299,8 +1308,9 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
       }
       
       tmp_add_s_probs = pow(exp(add_probs - shifter),1/temps(l));
-      if(sum(tmp_add_s_probs)==0){
+      if(sum(tmp_add_s_probs) == 0 || no_add_flag){
         f_prob(0)=0;
+        no_add_flag = false;
       }else{
         add_s_probs = tmp_add_s_probs/sum(tmp_add_s_probs);
         tsel_add = cox_c_sample(idx_add,1,add_s_probs,false);
@@ -1519,7 +1529,7 @@ Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const a
     }
     tpr(j) = sum(tmp_tp)/P; fpr(j) = sum(tmp_fp)/N;
   }
-
+  
   arma::mat roc_mat(n_th+2,2);
   roc_mat(0,0) = roc_mat(0,1) = 1; 
   roc_mat(n_th+1,0) = roc_mat(n_th+1,1) = 0; 
@@ -1561,7 +1571,7 @@ arma::vec aucBMA_survival(const arma::mat& X_tr, const arma::mat& TS_tr, const a
     mark1 = arma::exp(mark); mark2 = mark1+1; mark3 = mark1/mark2;
     Markers.col(i) = mark3; 
   }
-
+  
   arma::vec thresh = arma::sort(arma::unique(Markers.col(0)));
   int n_th = thresh.n_elem;  
   

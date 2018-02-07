@@ -19,9 +19,10 @@
 #'
 #' @param X The \code{n} times \code{p} design matrix. The columns should
 #' represent genes and rows represent the observations. The column names are
-#' used as gene names so they should not be left as \code{NULL}. For logistic
-#' regression, \code{X} should NOT contain vector of \code{1}'s representing
-#' the intercept as it will be added automatically.
+#' used as gene names so they should not be left as \code{NULL}. Moreover,
+#' the minimum number of columns allowed is 3. For logistic regression, 
+#' \code{X} should NOT contain vector of \code{1}'s representing the intercept
+#' as it will be added automatically.
 #' @param resp For logistic regression models it is the binary response
 #' vector. For Cox proportional hazard models this is a two column matrix
 #' where the first column contains survival time vector and the second column
@@ -237,10 +238,18 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                 family = c("logistic", "survival"), hselect = TRUE,
                 r = 1, tau = 0.25, niter, mod_prior=c("unif", "beta"),
                 inseed = NULL, ncpu = 4, cplng = F){
-
+  
   if(family=="logistic"){
     # ==================== Data pre-processing =======================
 
+    nf <- length(fixed_cols)
+    if (nf){
+      X1 <- X[,fixed_cols]
+      X2 <- X[,-fixed_cols]
+      X <- cbind(X1,X2)
+      if(length(which(is.na(X1)))) warning("At least one of fixed columns contain NA and will be removed if preprocessing is activated!")
+    }
+        
     if (prep){
       Xin <- PreProcess(X)
       X <- Xin$X
@@ -248,23 +257,16 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     } else{
       gnames <- colnames(X)
     }
-
-    nf <- length(fixed_cols)
-    if (nf){
-      X1 <- X[,fixed_cols]; g1 <- gnames[fixed_cols]
-      X2 <- X[,-fixed_cols]; g2 <- gnames[-fixed_cols]
-      X <- cbind(X1,X2); gnames <- c(g1,g2)
-    }
-
+    
     y <- as.numeric(resp)
     dx <- dim(X)
     n <- dx[1]
     p <- dx[2]
-
+    
     X <- cbind(rep(1, n), X)
     gnames <- c("Intercept", gnames)
     # ======================= Hyperparameters ========================
-
+    
     cons <- 0;
     prp <- p / n
     ar <- 2 ^ n
@@ -278,7 +280,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     }else{
       cons <- ceiling(log(p))
     }
-
+    
     cons <- min(cons,ceiling(log(p)))
     if (mod_prior == "beta"){
       a <- cons; b <- p - a;
@@ -291,11 +293,11 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       tau <- hyper$tau
       r <- 1
     }
-
+    
     initProb <- cons / p
     exmat <- cbind(y, X)
     # =========================== Main ===============================
-
+    
     if (!cplng){
       schain <- p
       while (schain > cons || schain == 0) {
@@ -306,7 +308,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       chain2 <- chain1
       Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, a, b, cons, niter,
                             cplng, chain2)
-
+      
       #============ reading outputs ======================
       Hash_Key <- Lregout$hash_key; all_probs <- Lregout$hash_prob; 
       VisCovs <- Lregout$vis_covs;
@@ -317,7 +319,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       uinds <- which(!duplicated(Hash_Key))
       all_probs <- all_probs[uinds]
       list_vis_covs <- VisCovs[uinds]
-
+      
       outnum <- min(nvm,1000)
       sout <- sort(all_probs,decreasing = T,index.return=T)
       MaxMargs <- sout$x[1:outnum]
@@ -337,15 +339,15 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       inc_probs <- inc_prob_calc(all_probs,list_vis_covs,p+1)
       inc_probs <- inc_probs[-1]
       median_model <- which(inc_probs >= 0.5)
-
+      
       #========================================#
-
+      
       return(list(max_prob = max_marg, HPM = sel_model,
                   beta_hat = beta_hat, MPM = median_model, inc_probs= inc_probs,
                   max_prob_vec = MaxMargs, max_models = MaxModels,
                   num_vis_models = nvm, des_mat = X,
                   gene_names = gnames, r = r, tau = tau))
-
+      
     } else {
       comb <- function(x, ...) {
         lapply(seq_along(x),
@@ -359,7 +361,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                         .init = list(list(), list(), list(), list()),
                         .packages = 'BVSNLP',
                         .options.snow = opts ) %dopar% {
-
+                          
                           schain <- p
                           while (schain > cons || schain == 0) {
                             chain1 <- rbinom(p-nf, 1, initProb)
@@ -372,10 +374,10 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                             schain <- sum(chain2)
                           }
                           chain2 <- as.numeric(c(rep(1,nf+1), chain2))
-
+                          
                           Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, a, b,
                                                 cons, niter, cplng, chain2)
-
+                          
                           maxChain <- as.logical(Lregout$max_chain)
                           maxMarg <- Lregout$max_prob
                           cflag <- Lregout$cplng_flag
@@ -383,37 +385,47 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                           bhat[maxChain] <- Lregout$beta_hat
                           list(maxChain, maxMarg, cflag, bhat)
                         }
-
+      
       stopCluster(cl)
-
+      
       MaxChain <- matrix(unlist(ParOut[[1]]), ncol = (p + 1), byrow = T)
       MaxMarg <- unlist(ParOut[[2]])
       cpl_flag <- unlist(ParOut[[3]])
       bhat <- matrix(unlist(ParOut[[4]]), ncol = (p + 1), byrow = T)
-
+      
       cpl_percent <- sum(cpl_flag) / ncpu
       Final_Marg <- MaxMarg
       Final_Chains <- MaxChain
-
+      
       D <- as.data.frame(cbind(Final_Chains, Final_Marg))
       Counts <- rep(1, length(Final_Marg))
       A <- aggregate(Counts, by = as.list(D), FUN = sum)
       Freq <- A[, p + 3]
       Probs <- A[, p + 2]
       UniqModels <- apply(A[, 1:(p + 1)], 1, function(x) which(x > 0))
-
+      
       return(list(cpl_percent = cpl_percent, margin_probs = Final_Marg,
                   chains = Final_Chains, cpl_flags = cpl_flag, beta_hat = bhat,
                   freq = Freq, probs = Probs, uniq_models = UniqModels,
                   gene_names = gnames, r = r, tau = tau))
     }
   }
-
-### ================================================================= 
+  
+  ### ================================================================= 
   if(family=="survival"){
     TS <- resp
     time <- TS[, 1]
     status <- TS[, 2]
+    
+    nf <- length(fixed_cols)
+    if (nf){
+      X1 <- X[,fixed_cols]
+      X2 <- X[,-fixed_cols]
+      X <- cbind(X1,X2)
+      if(length(which(is.na(X1)))) warning("At least one of fixed columns contain NA and will be removed if preprocessing is activated!")
+    }
+    sfidx <- nf+1
+    
     if (prep){
       Xin <- PreProcess(X)
       X <- Xin$X
@@ -421,22 +433,14 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     } else{
       gnames <- colnames(X)
     }
-
-    nf <- length(fixed_cols)
-    if (nf){
-      X1 <- X[,fixed_cols]; g1 <- gnames[fixed_cols]
-      X2 <- X[,-fixed_cols]; g2 <- gnames[-fixed_cols]
-      X <- cbind(X1,X2); gnames <- c(g1,g2)
-    }
-    sfidx <- nf+1
-
+    
     dx <- dim(X)
     n <- dx[1]
     p <- dx[2]
     exmat <- cbind(time, status, X)
     # ======================= Hyperparameters ========================
     cons <- 1+nf
-
+    
     if (mod_prior == "beta"){
       a <- cons; b <- p - a;
     }
@@ -448,16 +452,16 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       tau <- hyper$tau
       r <- 1
     }
-
+    
     ntimes <- 10
     d <- 2 * ceiling(log(p))
     temps <- seq(3, 1, length.out = ntimes)
-
+    
     L <- ntimes
     J <- niter
-
+    
     # =========================== Main ===============================
-
+    
     comb <- function(x, ...) {
       lapply(seq_along(x),
              function(i) c(x[[i]], lapply(list(...), function(y) y[[i]])))
@@ -470,12 +474,12 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                       .init = list(list(), list(), list(), list(), list(), list()),
                       .packages = 'BVSNLP',
                       .options.snow = opts ) %dopar% {
-
+                        
                         cur_model <- sample(sfidx:p, 3);
                         if (nf > 0) cur_model <- c(1:nf,cur_model)
                         coxout <- cox_bvs(exmat, cur_model, nf, tau, r, a, b,
                                           d, L, J, temps)
-
+                        
                         maxmod <- coxout$max_model
                         maxprob <- coxout$max_prob
                         hashkey <- coxout$hash_key
@@ -484,7 +488,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                         list(maxmod, maxprob, hashkey, allprobs, cur_model, viscovs)#,vismodels)
                       }
     stopCluster(cl)
-  
+    
     Hash_Key <- unlist(parout[[3]])
     All_Probs <- unlist(parout[[4]])
     CurModel <- matrix(unlist(parout[[5]]), ncol = 3, byrow = T)
@@ -492,27 +496,27 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     for (i in 1:ncpu){
       VisCovs <- c(VisCovs,parout[[6]][[i]])
     }
-
+    
     num_vis_models <- length(unique(Hash_Key))
     uinds <- which(!duplicated(Hash_Key))
     all_probs <- All_Probs[uinds]
     list_vis_covs <- VisCovs[uinds]
-
+    
     outnum <- min(num_vis_models,1000);
     sout <- sort(all_probs,decreasing = T,index.return=T)
     MaxMargs <- sout$x[1:outnum]
     minds <- sout$ix[1:outnum]
     max_marg <- MaxMargs[1]; indmax <- minds[1]
     sel_model <- list_vis_covs[[indmax]] + 1
-
+    
     MaxModels <- list(NULL)
     for (i in 1:outnum){
       MaxModels[[i]] <- list_vis_covs[[minds[i]]] + 1
     }
-
+    
     inc_probs <- inc_prob_calc(all_probs,list_vis_covs,p)
     median_model <- which(inc_probs >= 0.5)
-
+    
     #========================================================
     return(list(num_vis_models = num_vis_models,
                 max_prob = max_marg, HPM = sel_model, MPM = median_model,

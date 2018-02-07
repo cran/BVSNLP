@@ -95,12 +95,14 @@
 predBMA <- function(bvsobj, X, resp, train_idx, test_idx, thr = 0.05,
                     times = NULL, family = c("logistic", "survival")){
   
+  X_tr <- bvsobj$des_mat
   gn <- bvsobj$gene_names
   xname <- colnames(X)
   ind <- match(gn,xname)
   X <- X[,ind]
-  X_tr <- X[train_idx,]
   X_te <- X[test_idx,]
+  Xout <- PreProcess(X_te)
+  X_te <- Xout$X
 
   r <- bvsobj$r
   tau <- bvsobj$tau

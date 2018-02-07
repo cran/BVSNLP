@@ -12,9 +12,10 @@ bvs(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
 \arguments{
 \item{X}{The \code{n} times \code{p} design matrix. The columns should
 represent genes and rows represent the observations. The column names are
-used as gene names so they should not be left as \code{NULL}. For logistic
-regression, \code{X} should NOT contain vector of \code{1}'s representing
-the intercept as it will be added automatically.}
+used as gene names so they should not be left as \code{NULL}. Moreover,
+the minimum number of columns allowed is 3. For logistic regression, 
+\code{X} should NOT contain vector of \code{1}'s representing the intercept
+as it will be added automatically.}
 
 \item{resp}{For logistic regression models it is the binary response
 vector. For Cox proportional hazard models this is a two column matrix

@@ -10,7 +10,10 @@ CoefEst(X, resp, mod_cols, tau, r, family = c("logistic", "survival"))
 \item{X}{The design matrix. It is assumed that the preprocessing steps have
 been done on this matrix. It is recommended that to use the output of
 \code{\link{PreProcess}} function of the package. Also note that the
-\code{X} should NOT have a vector of $1$'s as the first column.}
+\code{X} should NOT have a vector of $1$'s as the first column. If the
+coefficients of a selected model by \code{\link{bvs}} is to be estimated, it
+is highly recommended that the design matrix that is one of the outputs of
+the \code{bvs} function and is reported as \code{des_mat} to be used here.}
 
 \item{resp}{For logistic regression models, this variable is the binary
 response vector. For Cox proportional hazard models this is a two column
