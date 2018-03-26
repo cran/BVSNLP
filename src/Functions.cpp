@@ -17,46 +17,6 @@ typedef Eigen::Map<Eigen::VectorXd> MapVec;
 //================== Part 1: Class Definitions =========================
 //========================================================================
 
-class LogReg_MAP: public Numer::MFuncGrad
-{
-private:
-  const MapVec y;
-  const MapMat XX;
-  double tau;
-  double r;
-public:
-  LogReg_MAP(const MapMat x_, const MapVec y_, double tau_, double r_) :
-  y(y_), XX(x_), tau(tau_), r(r_) {}
-  
-  double f_grad(Numer::Constvec& beta, Numer::Refvec grad)
-  {
-    Eigen::VectorXd XB;
-    XB.noalias() = XX * beta;
-    if ((XB.array() > 500).any()){
-      for (int i=0; i < XB.size(); i++)
-        if (XB(i) >500) XB(i)=500;
-    }
-    Eigen::VectorXd eXB = XB.array().exp();
-    Eigen::VectorXd eXBpOne = eXB.array()+1.0;
-    Eigen::VectorXd logstc = eXB.array()/eXBpOne.array();
-    Eigen::MatrixXd Xt = XX.transpose();
-    const double ypXB = y.dot(XB);
-    Eigen::VectorXd beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2)); beta2(0) = 0;
-    
-    const double negloglik = eXBpOne.array().log().sum()-ypXB;
-    const double neglogprior = beta2.array().sum();
-    const double neglogposterior = negloglik + neglogprior;
-    
-    Eigen::VectorXd negloglikgrad = Xt*(logstc - y);
-    Eigen::VectorXd neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array();
-    neglogpriorgrad(0) = 0;
-    
-    grad.noalias() = negloglikgrad + neglogpriorgrad;
-    return neglogposterior;
-  }
-};
-//=======================================================================//
-
 class LogReg_MLE: public Numer::MFuncGrad
 {
 private:
@@ -82,6 +42,65 @@ public:
 };
 //=======================================================================//
 
+class LogReg_MAP: public Numer::MFuncGrad
+{
+private:
+  const MapVec y;
+  const MapMat XX;
+  double tau;
+  double r;
+  const int nlptype;
+public:
+  LogReg_MAP(const MapMat x_, const MapVec y_, double tau_, double r_, const int nlptype_) :
+  y(y_), XX(x_), tau(tau_), r(r_), nlptype(nlptype_) {}
+  
+  double f_grad(Numer::Constvec& beta, Numer::Refvec grad)
+  {
+    Eigen::VectorXd XB;
+    XB.noalias() = XX * beta;
+    if ((XB.array() > 500).any()){
+      for (int i=0; i < XB.size(); i++)
+        if (XB(i) >500) XB(i)=500;
+    }
+    Eigen::VectorXd eXB = XB.array().exp();
+    Eigen::VectorXd eXBpOne = eXB.array()+1.0;
+    Eigen::VectorXd logstc = eXB.array()/eXBpOne.array();
+    Eigen::MatrixXd Xt = XX.transpose();
+    const double ypXB = y.dot(XB);
+    
+    const double negloglik = eXBpOne.array().log().sum()-ypXB;
+    Eigen::VectorXd negloglikgrad = Xt*(logstc - y);
+    
+    double neglogprior;
+    Eigen::VectorXd beta2, neglogpriorgrad;
+    switch(nlptype){
+    case 0:
+      beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2)); beta2(0) = 0;
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array();
+      neglogpriorgrad(0) = 0;      
+      break;
+    case 1:
+      beta2 = beta.array().pow(2)/(2*tau)-2*r*beta.array().log(); beta2(0) = 0;
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = beta.array()/tau - 2*r/beta.array();
+      neglogpriorgrad(0) = 0;      
+      break;
+    default:
+      beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2)); beta2(0) = 0;
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array();
+      neglogpriorgrad(0) = 0;      
+      break;      
+    }
+    
+    const double neglogposterior = negloglik + neglogprior;
+    grad.noalias() = negloglikgrad + neglogpriorgrad;
+    return neglogposterior;
+  }
+};
+//=======================================================================//
+
 class LogReg_LogMarginal
 {
 private:
@@ -90,17 +109,18 @@ private:
   const MapVec y;
   double tau;
   double r;
+  const int nlptype;
   
 public:
-  LogReg_LogMarginal(const MapMat x_, Eigen::VectorXd beta_, const MapVec y_, double tau_, double r_, int n) :
-  XX(x_), beta(beta_), y(y_), tau(tau_), r(r_) {}
+  LogReg_LogMarginal(const MapMat x_, Eigen::VectorXd beta_, const MapVec y_, double tau_, double r_, const int nlptype_) :
+  XX(x_), beta(beta_), y(y_), tau(tau_), r(r_), nlptype(nlptype_) {}
   
   double marginal_prob() {
     Eigen::VectorXd XB;
     XB.noalias() = XX * beta;
     Eigen::VectorXd eXB = XB.array().exp();
     Eigen::VectorXd eXBpOne = eXB.array()+1.0;
-    Eigen::VectorXd B2 = beta.array().pow(2);
+    Eigen::VectorXd B2 = beta.array().square();
     const double ypXB = y.dot(XB);
     int  k = XX.cols();
     double cov;
@@ -111,25 +131,42 @@ public:
     
     Eigen::MatrixXd hessian(k,k);
     hessian.setZero();
-    Eigen::VectorXd denom = eXBpOne.array().pow(2);
+    Eigen::VectorXd denom = eXBpOne.array().square();
     Eigen::VectorXd SubLogistic = eXB.array()/denom.array();
-    Eigen::VectorXd diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4); diagvec(0)=0;
-    Eigen::VectorXd lp1 = -(r+1)*beta.array().abs().log(); lp1(0) = 0;
-    Eigen::VectorXd lp2 = tau/B2.array(); lp2(0) = 0;
+    
+    Eigen::VectorXd diagvec, lp1, lp2, neglogpriorgrad;
+    switch(nlptype){
+    case 0:
+      diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4); diagvec(0)=0;
+      lp1 = -(r+1)*beta.array().abs().log(); lp1(0) = 0;
+      lp2 = tau/B2.array(); lp2(0) = 0;
+      logPrior = (k-1)*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
+      break;
+    case 1:
+      diagvec = 2*r/B2.array() + 1/tau; diagvec(0)=0;
+      lp1 = -B2.array()/(2*tau)+2*r*beta.array().log(); lp1(0) = 0;
+      logPrior = -(k-1)*(log(2*M_PI)/2+(r+0.5)*log(tau))+lp1.sum();      
+      break;
+    default:
+      diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4); diagvec(0)=0;
+      lp1 = -(r+1)*beta.array().abs().log(); lp1(0) = 0;
+      lp2 = tau/B2.array(); lp2(0) = 0;
+      logPrior = (k-1)*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
+      break;      
+    }
     
     for(int i=0; i < k-1; i++){
-      Eigen::VectorXd aux = XX.col(i).array().pow(2);
+      Eigen::VectorXd aux = XX.col(i).array().square();
       hessian(i,i) = diagvec(i)-SubLogistic.dot(aux);
       for(int j=i+1; j < k; j++){
         aux = XX.col(i).array()*XX.col(j).array();
         hessian(i,j) = hessian(j,i) = -SubLogistic.dot(aux);
       }
     }
-    aux = XX.col(k-1).array().pow(2); // set the value for the last element.
+    aux = XX.col(k-1).array().square(); // set the value for the last element.
     hessian(k-1,k-1) = diagvec(k-1)-SubLogistic.dot(aux);
     cov = 1/(-hessian).determinant();
     logCond = ypXB-eXBpOne.array().log().sum();
-    logPrior = (k-1)*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
     if (cov < 0){
       return (-999999);
     }else{
@@ -192,9 +229,11 @@ private:
   const MapVec xbeta_m;
   double tau;
   double r;
+  const int nlptype;
+  
 public:
-  Cox_MAP(const MapMat x_, const MapVec status_, const MapVec xbeta_m_, double tau_, double r_) :
-  XX(x_), status(status_), xbeta_m(xbeta_m_), tau(tau_), r(r_) {}
+  Cox_MAP(const MapMat x_, const MapVec status_, const MapVec xbeta_m_, double tau_, double r_, const int nlptype_) :
+  XX(x_), status(status_), xbeta_m(xbeta_m_), tau(tau_), r(r_), nlptype(nlptype_) {}
   
   double f_grad(Numer::Constvec& beta, Numer::Refvec grad)
   {
@@ -222,16 +261,30 @@ public:
       sneweXB(i) = snewexbval;
     }
     Eigen::VectorXd lnewseXB = sneweXB.array().log();
-    Eigen::VectorXd beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2));
-    
     const double negloglik = status.dot(lnewseXB-xbeta);
-    const double neglogprior = beta2.array().sum();
-    const double neglogposterior = negloglik + neglogprior;
-    
-    
     Eigen::VectorXd negloglikgrad  = (XS-Xtr) * status;
-    Eigen::VectorXd neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array(); 
     
+    double neglogprior;
+    Eigen::VectorXd beta2, neglogpriorgrad;
+    switch(nlptype){
+    case 0:
+      beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2));
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array();
+      break;
+    case 1:
+      beta2 = beta.array().pow(2)/(2*tau)-2*r*beta.array().log();
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = beta.array()/tau - 2*r/beta.array();
+      break;
+    default:
+      beta2 = (r+1)*beta.array().abs().log()+tau/(beta.array().pow(2));
+      neglogprior = beta2.array().sum();
+      neglogpriorgrad = -2*tau/(beta.array().pow(3)) + (r+1)/beta.array();
+      break;
+    }
+    
+    const double neglogposterior = negloglik + neglogprior;
     grad.noalias() = negloglikgrad + neglogpriorgrad; 
     return neglogposterior;
   }
@@ -246,10 +299,11 @@ private:
   const MapVec status;
   double tau;
   double r;
+  const int nlptype;
   
 public:
-  Cox_LogMarginal(const MapMat x_, const MapVec beta_, const MapVec status_, double tau_, double r_) :
-  XX(x_), beta(beta_), status(status_), tau(tau_), r(r_) {}
+  Cox_LogMarginal(const MapMat x_, const MapVec beta_, const MapVec status_, double tau_, double r_, const int nlptype_) :
+  XX(x_), beta(beta_), status(status_), tau(tau_), r(r_), nlptype(nlptype_) {}
   
   double marginal_prob() {
     double cov;
@@ -272,7 +326,7 @@ public:
     Eigen::VectorXd xbeta;
     xbeta.noalias() = XX * beta;
     Eigen::VectorXd enewXB = xbeta.array().exp();
-    Eigen::VectorXd B2 = beta.array().pow(2);
+    Eigen::VectorXd B2 = beta.array().square();
     
     AX = Xtr * enewXB.asDiagonal();
     for (int i=0; i < n; i++){
@@ -282,9 +336,26 @@ public:
     }
     Eigen::VectorXd lnewseXB = sneweXB.array().log();
     
-    Eigen::VectorXd diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4); 
-    Eigen::VectorXd lp1 = -(r+1)*beta.array().abs().log(); 
-    Eigen::VectorXd lp2 = tau/B2.array(); 
+    Eigen::VectorXd diagvec, lp1, lp2;
+    switch(nlptype){
+    case 0:
+      diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4);
+      lp1 = -(r+1)*beta.array().abs().log();
+      lp2 = tau/B2.array();
+      logPrior = p*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
+      break;
+    case 1:
+      diagvec = 2*r/B2.array() + 1/tau;
+      lp1 = -B2.array()/(2*tau)+2*r*beta.array().log();
+      logPrior = -p*(log(2*M_PI)/2+(r+0.5)*log(tau))+lp1.sum();      
+      break;
+    default:
+      diagvec = (r+1)/B2.array()-6*tau*beta.array().pow(-4);
+      lp1 = -(r+1)*beta.array().abs().log();
+      lp2 = tau/B2.array();
+      logPrior = p*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
+      break;      
+    }
     
     for(int s=0; s < p; s++){
       for (int i=0; i < n; i++){
@@ -307,7 +378,6 @@ public:
       return(-999999);
     } else {
       logCond = status.dot(xbeta-lnewseXB);
-      logPrior = p*(r*log(tau)/2-lgamma(r/2))+(lp1-lp2).sum();
       logMarginal = 0.5*(p*log(2*M_PI)+log(cov))+logCond+logPrior;
       return(logMarginal);
     }
@@ -447,7 +517,7 @@ arma::uvec seq_gen(int k){
 }
 //==================================================//
 
-double LogReg_Model_Prob(const MapMat XX, const MapVec y, double tau, double r, int a, int b, int n, int p)
+double LogReg_Model_Prob(const MapMat XX, const MapVec y, double tau, double r, int a, int b, int n, int p, const int nlptype)
 {
   double eps_f = 1.0e-08;
   double eps_g = 1.0e-05;
@@ -462,13 +532,13 @@ double LogReg_Model_Prob(const MapMat XX, const MapVec y, double tau, double r, 
   if (glm_status < 0) return(-999999);
   Eigen::VectorXd beta = glm_coef;
   
-  LogReg_MAP CM(XX,y,tau,r);
+  LogReg_MAP CM(XX,y,tau,r,nlptype);
   double fopt;
   int status = Numer::optim_lbfgs(CM, beta, fopt, maxit, eps_f, eps_g);
   if (status < 0) return(-999999);
   Eigen::VectorXd betavec = beta;
   
-  LogReg_LogMarginal calclm(XX,betavec,y,tau,r,n);
+  LogReg_LogMarginal calclm(XX,betavec,y,tau,r,nlptype);
   double logmarg = calclm.marginal_prob();
   double model_prob = logmarg + log_msize_prob(p,k-1,a,b);
   if (std::isnan(model_prob) || std::isinf(model_prob)){
@@ -479,11 +549,11 @@ double LogReg_Model_Prob(const MapMat XX, const MapVec y, double tau, double r, 
 }
 //==================================================//
 
-double Cox_Model_Prob(const MapMat XX, const MapVec status, arma::vec beta, double tau, double r, int a, int b, int p)
+double Cox_Model_Prob(const MapMat XX, const MapVec status, arma::vec beta, double tau, double r, int a, int b, int p, const int nlptype)
 {
   int k = XX.cols();
   const MapVec betavec(beta.memptr(),k);
-  Cox_LogMarginal calclm(XX,betavec,status,tau,r);
+  Cox_LogMarginal calclm(XX,betavec,status,tau,r,nlptype);
   
   double logmarg = calclm.marginal_prob();
   double model_prob = logmarg + log_msize_prob(p,k,a,b);
@@ -495,7 +565,7 @@ double Cox_Model_Prob(const MapMat XX, const MapVec status, arma::vec beta, doub
 }
 //==================================================//
 
-Rcpp::NumericVector cox_beta_est(arma::mat cur_model, const MapVec Status, double tau, double r){
+Rcpp::NumericVector cox_beta_est(arma::mat cur_model, const MapVec Status, double tau, double r, const int nlptype){
   double eps_f = 1.0e-08;
   double eps_g = 1.0e-05;
   int maxit = 300;
@@ -514,7 +584,7 @@ Rcpp::NumericVector cox_beta_est(arma::mat cur_model, const MapVec Status, doubl
     return(Rcpp::wrap(-999999));
   } else {
     Eigen::VectorXd betahat = coxph_coef;
-    Cox_MAP FM(fxx,Status,Cur_XBeta,tau,r);
+    Cox_MAP FM(fxx,Status,Cur_XBeta,tau,r,nlptype);
     double fopt;
     int map_status = Numer::optim_lbfgs(FM, betahat, fopt, maxit, eps_f, eps_g);
     if (map_status < 0){
@@ -625,6 +695,8 @@ Rcpp::NumericVector null_mle_lreg(arma::mat& XX, int n, int p, int cons, double 
 //' procedure.
 //' @param tau The paramter \code{tau} of the iMOM prior.
 //' @param r The paramter \code{r} of the iMOM prior.
+//' @param nlptype Determines the type of nonlocal prior that is used in the
+//' analyses. \code{0} is for piMOM and \code{1} is for pMOM.
 //' @param a The first parameter in beta distribution used as prior on model
 //' size. This parameter is equal to 1 when uinform-binomial prior is used.
 //' @param b The second paramter in beta distribution used as prior on model
@@ -708,10 +780,11 @@ Rcpp::NumericVector null_mle_lreg(arma::mat& XX, int n, int p, int cons, double 
 //' }
 //' chain1 <- as.numeric(c(1, chain1))
 //' chain2 <- chain1
+//' nlptype <- 0 ## PiMOM nonlocal prior
 //' nf <- 0 ### No fixed columns
 //'
 //' ### Running the function
-//' bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,a,b,in_cons,loopcnt,cplng,chain2)
+//' bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,nlptype,a,b,in_cons,loopcnt,cplng,chain2)
 //'
 //' ### Number of visited models for this specific run:
 //' bvsout$num_vis_models
@@ -725,7 +798,7 @@ Rcpp::NumericVector null_mle_lreg(arma::mat& XX, int n, int p, int cons, double 
 //' ### The unnormalized probability of the selected model:
 //' bvsout$max_prob
 // [[Rcpp::export]]
-Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double tau, double r, int a, int b,
+Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double tau, double r, const int nlptype, int a, int b,
                       int in_cons, int loopcnt, bool cplng, arma::uvec chain2)
 {
   arma::mat XX = exmat;
@@ -761,7 +834,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
   cur_x1 = XX.cols(cur_cols1);
   k1 = cur_x1.n_cols;
   const MapMat X1(cur_x1.memptr(), n, k1);
-  logprob1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p);
+  logprob1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p,nlptype);
   
   hash_key(count) = thiskey;
   hash_prob(count) = logprob1;
@@ -776,7 +849,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
     cur_x2 = XX.cols(cur_cols2);
     k2 = cur_x2.n_cols;
     const MapMat X2(cur_x2.memptr(), n, k2);
-    logprob2 = LogReg_Model_Prob(X2,Y,tau,r,a,b,n,p);
+    logprob2 = LogReg_Model_Prob(X2,Y,tau,r,a,b,n,p,nlptype);
     count++;
     
     maxprob = std::max(logprob1,logprob2);
@@ -797,7 +870,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
           cur_cols1 = arma::find(cand1);
           cur_x1 = XX.cols(cur_cols1);
           const MapMat X1(cur_x1.memptr(), n, elsum1);
-          logcand1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p);
+          logcand1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p,nlptype);
           count++;
         }
         if (elsum2 > cons) logcand2 = -9999;
@@ -805,7 +878,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
           cur_cols2 = arma::find(cand2);
           cur_x2 = XX.cols(cur_cols2);
           const MapMat X2(cur_x2.memptr(), n, elsum2);
-          logcand2 = LogReg_Model_Prob(X2,Y,tau,r,a,b,n,p);
+          logcand2 = LogReg_Model_Prob(X2,Y,tau,r,a,b,n,p,nlptype);
           count++;
         }
         
@@ -853,7 +926,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
           thiskey = calc_key(cur_cols1);
           cur_x1 = XX.cols(cur_cols1);
           const MapMat X1(cur_x1.memptr(), n, elsum1);
-          logcand1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p);
+          logcand1 = LogReg_Model_Prob(X1,Y,tau,r,a,b,n,p,nlptype);
           
           hash_key(count) = thiskey;
           hash_prob(count) = logcand1;
@@ -892,7 +965,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
   int glm_status = Numer::optim_lbfgs(nll, glm_coef, fopt_glm, maxit, eps_f, eps_g);
   if (glm_status < 0) Rcpp::stop("surprisingly the optimization for finding coefficients of the selected model did not converge!!");
   Eigen::VectorXd betahat = glm_coef;
-  LogReg_MAP FM(Fxx,Y,tau,r);
+  LogReg_MAP FM(Fxx,Y,tau,r,nlptype);
   double fopt;
   int status = Numer::optim_lbfgs(FM, betahat, fopt, maxit, eps_f, eps_g);
   if (status < 0) Rcpp::stop("surprisingly the optimization for finding coefficients of the selected model did not converge!!");
@@ -904,7 +977,7 @@ Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double 
 //==================================================//
 
 // [[Rcpp::export]]
-Rcpp::NumericVector lreg_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r)
+Rcpp::NumericVector lreg_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, const int nlptype)
 {
   double eps_f = 1.0e-08;
   double eps_g = 1.0e-05;
@@ -927,7 +1000,7 @@ Rcpp::NumericVector lreg_coef_est(const arma::mat& exmat, arma::uvec mod_cols, d
   if (glm_status < 0) {Rcpp::stop("The optimization function to estimate coefficients did not converge!");}
   Eigen::VectorXd beta = glm_coef;
   
-  LogReg_MAP CM(Fxx,Y,tau,r);
+  LogReg_MAP CM(Fxx,Y,tau,r,nlptype);
   double fopt;
   int status = Numer::optim_lbfgs(CM, beta, fopt, maxit, eps_f, eps_g);
   if(status < 0) {Rcpp::stop("The optimization function to estimate coefficients did not converge!");}
@@ -937,7 +1010,7 @@ Rcpp::NumericVector lreg_coef_est(const arma::mat& exmat, arma::uvec mod_cols, d
 //==================================================//
 
 // [[Rcpp::export]]
-double lreg_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b)
+double lreg_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b, const int nlptype)
 {
   arma::mat XX = exmat;
   arma::vec y = XX.col(0);
@@ -949,7 +1022,7 @@ double lreg_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, do
   int k = fx.n_cols;
   MapMat Fxx(fx.memptr(), n, k);
   const MapVec Y(y.memptr(), n);
-  double modprob = LogReg_Model_Prob(Fxx,Y,tau,r,a,b,n,p);
+  double modprob = LogReg_Model_Prob(Fxx,Y,tau,r,a,b,n,p,nlptype);
   return(modprob);
 }
 //==================================================//
@@ -1043,6 +1116,8 @@ Rcpp::NumericVector null_mle_cox(arma::mat& XX, int n, int p, int cons,
 //' procedure.
 //' @param tau The paramter \code{tau} of the iMOM prior.
 //' @param r The paramter \code{r} of the iMOM prior.
+//' @param nlptype Determines the type of nonlocal prior that is used in the
+//' analyses. \code{0} is for piMOM and \code{1} is for pMOM. 
 //' @param a The first parameter in beta distribution used as prior on model
 //' size. This parameter is equal to 1 when uinform-binomial prior is used.
 //' @param b The second paramter in beta distribution used as prior on model
@@ -1101,11 +1176,12 @@ Rcpp::NumericVector null_mle_cox(arma::mat& XX, int n, int p, int cons,
 //' d <- 2 * ceiling(log(p))
 //' temps <- seq(3, 1, length.out = L)
 //' tau <- 0.5; r <- 1; a <- 6; b <- p-a
+//' nlptype <- 0 ### PiMOM nonlocal prior
 //' cur_cols <- c(1,2,3) ### Starting model for the search algorithm
 //' nf <- 0 ### No fixed columns
 //' 
 //'### Running the Function
-//' coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,a,b,d,L,J,temps)
+//' coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,nlptype,a,b,d,L,J,temps)
 //' 
 //' ### The number of visited model for this specific run:
 //' length(coxout$hash_key)
@@ -1118,7 +1194,7 @@ Rcpp::NumericVector null_mle_cox(arma::mat& XX, int n, int p, int cons,
 //' coxout$max_prob
 //' 
 // [[Rcpp::export]]
-Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double tau, double r, int a,
+Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double tau, double r, const int nlptype, int a,
                    int b, int d, int L, int J, arma::vec temps)
 {
   int n = exmat.n_rows;
@@ -1159,7 +1235,7 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
   tmp_chain = arma::zeros<arma::urowvec>(p);
   tmp_chain(cur_cols) = arma::ones<arma::urowvec>(cur_cols_size);
   max_chain = tmp_chain;
-  bhat = cox_beta_est(xx, Status,tau,r);
+  bhat = cox_beta_est(xx, Status,tau,r,nlptype);
   if (bhat[0]==-999999){
     count++;
     hash_key(0) = thiskey; hash_prob(0) = -999999999; hash_vis_covs[0] = arma::find(tmp_chain);
@@ -1173,7 +1249,7 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
   }
   betahat = Rcpp::as<arma::vec>(bhat);
   MapMat XX(xx.memptr(), n, cur_cols_size);
-  tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+  tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p,nlptype);
   max_prob = tmp_prob;
   hash_key(count) = thiskey;
   hash_prob(count) = tmp_prob;
@@ -1188,7 +1264,7 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
       if(foundkey_cand == -1){
         hash_key_cand(count_cand) = thiskey_cand;
         cur_model = ordexmat.cols(cur_cols);
-        bhat = cox_beta_est(cur_model, Status,tau,r);
+        bhat = cox_beta_est(cur_model, Status,tau,r,nlptype);
         betahat = Rcpp::as<arma::vec>(bhat);
         cxbeta = cur_model*betahat;
         const MapVec Cur_XBeta(cxbeta.memptr(),n);
@@ -1206,7 +1282,7 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
       
       // //=========== From Here.....
       // cur_model = ordexmat.cols(cur_cols);
-      // bhat = cox_beta_est(cur_model, Status,tau,r);
+      // bhat = cox_beta_est(cur_model, Status,tau,r,nlptype);
       // betahat = Rcpp::as<arma::vec>(bhat);
       // cxbeta = cur_model*betahat;
       // const MapVec Cur_XBeta(cxbeta.memptr(),n);
@@ -1235,13 +1311,13 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
           if(foundkey == -1){
             hash_key(count) = thiskey;
             xx = ordexmat.cols(add_cand);
-            bhat = cox_beta_est(xx, Status,tau,r);
+            bhat = cox_beta_est(xx, Status,tau,r,nlptype);
             if (bhat[0]==-999999){
               tmp_prob = -999999999;
             } else {
               betahat = Rcpp::as<arma::vec>(bhat);
               MapMat XX(xx.memptr(), n, k+1);
-              tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+              tmp_prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p,nlptype);
             }
             hash_prob(count) = tmp_prob;
             tmp_chain = arma::zeros<arma::urowvec>(p);
@@ -1269,14 +1345,14 @@ Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double t
           if(foundkey == -1){
             hash_key(count) = thiskey;
             xx = ordexmat.cols(neg_cand);
-            bhat = cox_beta_est(xx, Status,tau,r);
+            bhat = cox_beta_est(xx, Status,tau,r,nlptype);
             
             if (bhat[0]==-999999){
               tmp_prob = -999999999;
             } else {
               betahat = Rcpp::as<arma::vec>(bhat);
               MapMat XX(xx.memptr(), n, k-1);
-              tmp_prob =  Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+              tmp_prob =  Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p,nlptype);
             }
             hash_prob(count) = tmp_prob;
             tmp_chain = arma::zeros<arma::urowvec>(p);
@@ -1370,7 +1446,7 @@ arma::vec inc_prob_calc(arma::vec all_probs, Rcpp::List vis_covs, int p)
 //==================================================//
 
 // [[Rcpp::export]]
-Rcpp::NumericVector cox_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r)
+Rcpp::NumericVector cox_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, const int nlptype)
 {
   int n = exmat.n_rows;
   arma::mat ord_temp = cox_order_vecs(exmat);
@@ -1381,14 +1457,14 @@ Rcpp::NumericVector cox_coef_est(const arma::mat& exmat, arma::uvec mod_cols, do
   mod_cols = mod_cols - 1;
   arma::mat cur_model = ordexmat.cols(mod_cols);
   
-  Rcpp::NumericVector bhat = cox_beta_est(cur_model, Status,tau,r);
+  Rcpp::NumericVector bhat = cox_beta_est(cur_model, Status,tau,r,nlptype);
   if (bhat[0]==-999999) {Rcpp::stop("The optimization function to estimate coefficients did not converge!");}
   return(bhat);
 }
 //==================================================//
 
 // [[Rcpp::export]]
-double cox_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b)
+double cox_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b, const int nlptype)
 {
   double prob;
   mod_cols = mod_cols-1;
@@ -1402,10 +1478,10 @@ double cox_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, dou
   const MapVec Status(status.memptr(), n);
   arma::mat cur_model = ordexmat.cols(mod_cols);
   MapMat XX(cur_model.memptr(), n, k);
-  Rcpp::NumericVector bhat = cox_beta_est(cur_model, Status,tau,r);
+  Rcpp::NumericVector bhat = cox_beta_est(cur_model, Status,tau,r,nlptype);
   if (bhat[0]==-999999) {Rcpp::stop("The optimization function to estimate coefficients did not converge!");}
   arma::vec betahat = Rcpp::as<arma::vec>(bhat);
-  prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p);
+  prob = Cox_Model_Prob(XX,Status,betahat,tau,r,a,b,p,nlptype);
   return(prob);
 }
 
@@ -1488,7 +1564,7 @@ arma::vec calc_marker(arma::mat xcols_tr, arma::mat xcols_te, arma::vec coefs)
 
 // [[Rcpp::export]]
 Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const arma::mat& X_te, const arma::vec& y_te,
-                           double tau, double r, arma::vec probs, Rcpp::ListOf<Rcpp::IntegerVector> models, int k)
+                           double tau, double r, const int nlptype, arma::vec probs, Rcpp::ListOf<Rcpp::IntegerVector> models, int k)
 {
   arma::uvec mod_cols, mod1;
   arma::vec cfs, mark, mark1, mark2, mark3;
@@ -1501,7 +1577,7 @@ Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const a
   for (int i=0; i < k; i++){
     mod1 = Rcpp::as<arma::uvec>(models[i]); mod1 = mod1 - 1;
     mod_cols = rm_begin(mod1);
-    tmp_cfs = lreg_coef_est(exmat_tr, mod_cols, tau, r);
+    tmp_cfs = lreg_coef_est(exmat_tr, mod_cols, tau, r,nlptype);
     cfs = Rcpp::as<arma::vec>(tmp_cfs);
     xcols_te = X_te.cols(mod1);
     m1 = xcols_te*cfs; mark = m1.col(0);
@@ -1547,7 +1623,7 @@ Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const a
 
 // [[Rcpp::export]]
 arma::vec aucBMA_survival(const arma::mat& X_tr, const arma::mat& TS_tr, const arma::mat& X_te, const arma::mat& TS_te,
-                          double tau, double r, arma::vec times, arma::vec probs,
+                          double tau, double r, const int nlptype, arma::vec times, arma::vec probs,
                           Rcpp::ListOf<Rcpp::IntegerVector> models, int k)
 {
   arma::uvec mod_cols, mod1;
@@ -1564,7 +1640,7 @@ arma::vec aucBMA_survival(const arma::mat& X_tr, const arma::mat& TS_tr, const a
   arma::mat Markers(n_new,k), xcols_tr, xcols_te;
   for (int i=0; i < k; i++){
     mod1 = Rcpp::as<arma::uvec>(models[i]); mod_cols = mod1; mod1 = mod1 - 1;
-    tmp_cfs = cox_coef_est(exmat_tr, mod_cols, tau, r);
+    tmp_cfs = cox_coef_est(exmat_tr, mod_cols, tau, r, nlptype);
     cfs = Rcpp::as<arma::vec>(tmp_cfs);
     xcols_tr = X_tr.cols(mod1); xcols_te = X_te.cols(mod1);
     mark = calc_marker(xcols_tr,xcols_te,cfs);

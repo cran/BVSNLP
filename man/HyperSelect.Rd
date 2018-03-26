@@ -4,8 +4,8 @@
 \alias{HyperSelect}
 \title{Hyperparameter selection for iMOM prior density}
 \usage{
-HyperSelect(X, resp, eff_size = 0.7, iter = 10000, mod_prior = c("unif",
-  "beta"), family = c("logistic", "survival"))
+HyperSelect(X, resp, eff_size = 0.7, nlptype = "piMOM", iter = 10000,
+  mod_prior = c("unif", "beta"), family = c("logistic", "survival"))
 }
 \arguments{
 \item{X}{The design matrix. \code{NA}'s should be removed and columns be
@@ -21,6 +21,10 @@ is the censoring status for each observation.}
 \item{eff_size}{This is the expected effect size in the model for a
 standardized design matrix, which is basically the coefficient value that is
 expected to occur the most based on some prior knowledge.}
+
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+product moment prior. The default is set to piMOM prior.}
 
 \item{iter}{The number of iteration needed to simulate from null model in
 order to approximate the null MLE density.}
@@ -68,7 +72,7 @@ colnames(X) <- paste("gene_",c(1:p),sep="")
 Xout <- PreProcess(X)
 XX <- Xout$X
 hparam <- HyperSelect(XX, y, iter = 1000, mod_prior = "beta",
-family = "logistic")
+                      family = "logistic")
 
 hparam$tau
 }

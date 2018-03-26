@@ -4,7 +4,8 @@
 \alias{ModProb}
 \title{Logarithm of unnormalized probability of a given model}
 \usage{
-ModProb(X, resp, mod_cols, tau, r, a, b, family = c("logistic", "survival"))
+ModProb(X, resp, mod_cols, nlptype = "piMOM", tau, r, a, b,
+  family = c("logistic", "survival"))
 }
 \arguments{
 \item{X}{The design matrix. It is assumed that the design matrix has
@@ -18,6 +19,10 @@ second column is the censoring status for each observation.}
 
 \item{mod_cols}{A vector of column indices of the design matrix,
 representing the model.}
+
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+product moment prior. The default is set to piMOM prior.}
 
 \item{tau}{Hyperparameter \code{tau} of the iMOM prior.}
 
@@ -63,7 +68,7 @@ y <- rbinom(n,1,probs)
 ### parameters for prior densities
 mod <- c(1:3)
 Mprob <- ModProb(X, y, mod, tau = 0.7, r = 1, a = 7, b = 993,
-family = "logistic")
+                 family = "logistic")
 
 Mprob
 }

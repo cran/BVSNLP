@@ -46,14 +46,17 @@
 #' @param hselect A boolean variable indicating whether the automatic procedure
 #' for hyperparameter selection should be run or not. The default value is
 #' \code{TRUE}. Note that in this setting, \code{r} is always chosen to be 1.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+#' product moment prior. The default is set to piMOM prior.
 #' @param r The paramter \code{r} of the iMOM prior, when no automatic
 #' procedure for hyperparameter selection is done. As a result, this is
 #' relevant only when \code{hselect = FALSE}, otherwise it is ignored.
 #' @param tau The paramter \code{tau} of the iMOM prior, when no automatic
 #' procedure for hyperparameter selection is done. As a result, this is
 #' relevant only when \code{hselect = FALSE}, otherwise it is ignored.
-#' @param niter Number of iterations. For binary outcome data, this
-#' determines the number of MCMC iterations per CPU. For survival outcome data
+#' @param niter Number of iterations. For binary response data, this
+#' determines the number of MCMC iterations per CPU. For survival response data
 #' this is the number of iterations per temperature schedule in the stochastic
 #' search algorithm.
 #' @param mod_prior Type of prior used for the model space. \code{unif} is
@@ -109,6 +112,7 @@
 #' \item{inc_probs}{A vector of length \code{p+1} containing the posterior
 #' inclusion probability for each covariate in the design matrix. The order of
 #' columns is with respect to processed design matrix, \code{des_mat}.}
+#' \item{nlptype}{The type of nonlocal prior used in the analyses.}
 #' \item{des_mat}{The design matrix used in the analysis where fixed columns
 #' are moved to the beginning of the matrix and if \code{prep=TRUE}, the
 #' columns containing \code{NA} are all removed. The reported indices in
@@ -130,6 +134,7 @@
 #' \code{X}, depending on existence of fixed columns in selection procedure.
 #' As a result, always match the indices to the columns of the design matrix
 #' that is reported as an output in \code{des_mat}.}
+#' \item{nlptype}{The type of nonlocal prior used in the analyses.}
 #' \item{cpl_flags}{A \code{k} by \code{1} binary vector, showing which pairs
 #' are coupled, (=\code{1}) and which are not, (= \code{0}).}
 #' \item{beta_hat}{A \code{k} by \code{(p+1)} matrix where each row is the
@@ -161,6 +166,8 @@
 #' Barbieri et. al., this is defined to be the model consisting of those
 #' variables whose posterior inclusion probability is at least 1/2. The order
 #' of columns is similar to that is explained for \code{HPM}.}
+#' \item{beta_hat}{The coefficient vector for the selected model reported in
+#' \code{HPM}.}
 #' \item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
 #' probabilities of the first 1000 models with highest posterior probability
 #' among all visited models. If the total number of visited models is less than
@@ -173,6 +180,7 @@
 #' \item{inc_probs}{A \code{p} by \code{1} vector containing the posterior
 #' inclusion probability for each covariate in the design matrix. The order of
 #' columns is with respect to processed design matrix, \code{des_mat}.}
+#' \item{nlptype}{The type of nonlocal prior used in the analyses.}
 #' \item{des_mat}{The design matrix used in the analysis where fixed columns
 #' are moved to the beginning of the matrix and if \code{prep=TRUE}, the
 #' columns containing \code{NA} are all removed. The reported indices in
@@ -224,9 +232,10 @@
 #'
 #' ### Running 'bvs' function without coupling and with hyperparamter selection
 #' ### procedure
-#' bout <- bvs(X, y, family = "logistic", mod_prior = "beta", niter = 50)
-#' 
-#' ### Highes Posterior Model
+#' bout <- bvs(X, y, family = "logistic", nlptype = "piMOM",
+#'             mod_prior = "beta", niter = 50)
+#'             
+#' ### Highest Posterior Model
 #' bout$HPM
 #'
 #'### Estimated Coefficients:
@@ -236,17 +245,18 @@
 #' bout$num_vis_models
 bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                 family = c("logistic", "survival"), hselect = TRUE,
-                r = 1, tau = 0.25, niter, mod_prior=c("unif", "beta"),
-                inseed = NULL, ncpu = 4, cplng = F){
+                nlptype = "piMOM", r = 1, tau = 0.25, niter,
+                mod_prior = c("unif", "beta"), inseed = NULL, ncpu = 4,
+                cplng = F){
   
   if(family=="logistic"){
     # ==================== Data pre-processing =======================
 
     nf <- length(fixed_cols)
     if (nf){
-      X1 <- X[,fixed_cols]
-      X2 <- X[,-fixed_cols]
-      X <- cbind(X1,X2)
+      X1 <- X[,fixed_cols]; g1 <- colnames(X[,fixed_cols])
+      X2 <- X[,-fixed_cols]; g2 <- colnames(X[,-fixed_cols])
+      X <- cbind(X1,X2); colnames(X) <- c(g1,g2)
       if(length(which(is.na(X1)))) warning("At least one of fixed columns contain NA and will be removed if preprocessing is activated!")
     }
         
@@ -289,13 +299,15 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       a <- 1; b <- 1;
     }
     if (hselect){
-      hyper <- HyperSelect(X, y, eff_size, 20000, mod_prior,family)
+      hyper <- HyperSelect(X, y, eff_size, nlptype, 20000, mod_prior,family)
       tau <- hyper$tau
       r <- 1
     }
     
     initProb <- cons / p
     exmat <- cbind(y, X)
+    if(nlptype=="piMOM") nlptype_int <- 0
+    if(nlptype=="pMOM") nlptype_int <- 1
     # =========================== Main ===============================
     
     if (!cplng){
@@ -306,7 +318,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       }
       chain1 <- as.numeric(c(rep(1,nf+1), chain1)) # one for the intercept.
       chain2 <- chain1
-      Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, a, b, cons, niter,
+      Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, nlptype_int, a, b, cons, niter,
                             cplng, chain2)
       
       #============ reading outputs ======================
@@ -345,7 +357,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       return(list(max_prob = max_marg, HPM = sel_model,
                   beta_hat = beta_hat, MPM = median_model, inc_probs= inc_probs,
                   max_prob_vec = MaxMargs, max_models = MaxModels,
-                  num_vis_models = nvm, des_mat = X,
+                  num_vis_models = nvm, nlptype = nlptype, des_mat = X,
                   gene_names = gnames, r = r, tau = tau))
       
     } else {
@@ -375,7 +387,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                           }
                           chain2 <- as.numeric(c(rep(1,nf+1), chain2))
                           
-                          Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, a, b,
+                          Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, nlptype_int, a, b,
                                                 cons, niter, cplng, chain2)
                           
                           maxChain <- as.logical(Lregout$max_chain)
@@ -406,7 +418,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       
       return(list(cpl_percent = cpl_percent, margin_probs = Final_Marg,
                   chains = Final_Chains, cpl_flags = cpl_flag, beta_hat = bhat,
-                  freq = Freq, probs = Probs, uniq_models = UniqModels,
+                  freq = Freq, probs = Probs, uniq_models = UniqModels, nlptype = nlptype,
                   gene_names = gnames, r = r, tau = tau))
     }
   }
@@ -419,9 +431,9 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     
     nf <- length(fixed_cols)
     if (nf){
-      X1 <- X[,fixed_cols]
-      X2 <- X[,-fixed_cols]
-      X <- cbind(X1,X2)
+      X1 <- X[,fixed_cols]; g1 <- colnames(X[,fixed_cols])
+      X2 <- X[,-fixed_cols]; g2 <- colnames(X[,-fixed_cols])
+      X <- cbind(X1,X2); colnames(X) <- c(g1,g2)
       if(length(which(is.na(X1)))) warning("At least one of fixed columns contain NA and will be removed if preprocessing is activated!")
     }
     sfidx <- nf+1
@@ -438,6 +450,8 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     n <- dx[1]
     p <- dx[2]
     exmat <- cbind(time, status, X)
+    if(nlptype=="piMOM") nlptype_int <- 0
+    if(nlptype=="pMOM") nlptype_int <- 1
     # ======================= Hyperparameters ========================
     cons <- 1+nf
     
@@ -448,7 +462,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       a <- 1; b <- 1;
     }
     if (hselect){
-      hyper <- HyperSelect(X, TS, eff_size, 5000, mod_prior, family)
+      hyper <- HyperSelect(X, TS, eff_size, nlptype, 5000, mod_prior, family)
       tau <- hyper$tau
       r <- 1
     }
@@ -477,7 +491,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
                         
                         cur_model <- sample(sfidx:p, 3);
                         if (nf > 0) cur_model <- c(1:nf,cur_model)
-                        coxout <- cox_bvs(exmat, cur_model, nf, tau, r, a, b,
+                        coxout <- cox_bvs(exmat, cur_model, nf, tau, r, nlptype_int, a, b,
                                           d, L, J, temps)
                         
                         maxmod <- coxout$max_model
@@ -516,12 +530,12 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
     
     inc_probs <- inc_prob_calc(all_probs,list_vis_covs,p)
     median_model <- which(inc_probs >= 0.5)
+    beta_hat <- CoefEst(X,TS,sel_model,nlptype,tau,r,"survival")
     
-    #========================================================
     return(list(num_vis_models = num_vis_models,
                 max_prob = max_marg, HPM = sel_model, MPM = median_model,
-                max_prob_vec = MaxMargs, max_models = MaxModels,
-                inc_probs = inc_probs, des_mat = X, start_models = CurModel,
+                beta_hat = beta_hat, max_prob_vec = MaxMargs, max_models = MaxModels,
+                inc_probs = inc_probs, nlptype = nlptype, des_mat = X, start_models = CurModel,
                 r = r, tau = tau, gene_names = gnames))
   }
 }

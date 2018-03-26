@@ -26,6 +26,9 @@
 #' the time section of this variable should be in the same scale and unit
 #' (year, days, etc.) as \code{times} variable for which the AUC has to be
 #' computed.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+#' product moment prior. The default is set to piMOM prior.
 #' @param train_idx An integer vector containing the indices of the training
 #' set.
 #' @param test_idx An integer vector containing the indices of the test set.
@@ -84,16 +87,19 @@
 #'test_idx <- setdiff(1:n,train_idx)
 #'X_train <- X[train_idx,]
 #'y_train <- y[train_idx]
-#'bout <- bvs(X_train, y_train, prep=FALSE, family = "logistic", mod_prior = "beta",niter = 50)
-#'BMAout <- predBMA(bout, X, y, train_idx, test_idx, family="logistic")
+#'bout <- bvs(X_train, y_train, prep=FALSE, family = "logistic",
+#'            mod_prior = "beta",niter = 50)
+#'BMAout <- predBMA(bout, X, y, train_idx = train_idx, test_idx = test_idx,
+#'                  family="logistic")
 #' ### AUC for the prediction:
 #'BMAout$auc
 #'
 #'### Plotting ROC Curve
 #'roc <- BMAout$roc_curve
 #'plot(roc,lwd=2,type='l',col='blue')
-predBMA <- function(bvsobj, X, resp, train_idx, test_idx, thr = 0.05,
-                    times = NULL, family = c("logistic", "survival")){
+predBMA <- function(bvsobj, X, resp, nlptype = "piMOM", train_idx, test_idx,
+                    thr = 0.05, times = NULL,
+                    family = c("logistic", "survival")){
   
   X_tr <- bvsobj$des_mat
   gn <- bvsobj$gene_names
@@ -115,17 +121,18 @@ predBMA <- function(bvsobj, X, resp, train_idx, test_idx, thr = 0.05,
   k <- length(passinds)
   oprobs <- probs[passinds]; sh <- ceiling(max(oprobs)); oprobs <- exp(oprobs - sh);
   oprobs <- oprobs/sum(oprobs)
-  omodels <- models[passinds] 
+  omodels <- models[passinds]
+  if(nlptype=="piMOM") nlptype_int <- 0
+  if(nlptype=="pMOM") nlptype_int <- 1  
   # =======================================
   
   if(family=="logistic"){
-
     y <- resp
     y_tr <- y[train_idx]
     y_te <- y[test_idx]
     X_tr <- cbind(rep(1,length(y_tr)),X_tr); X_te <- cbind(rep(1,length(y_te)),X_te);
     
-    aucout <- aucBMA_logistic(X_tr,y_tr,X_te,y_te,tau,r,oprobs,omodels,k)
+    aucout <- aucBMA_logistic(X_tr,y_tr,X_te,y_te,tau,r,nlptype_int,oprobs,omodels,k)
     roc <- aucout$roc; colnames(roc) <- c("TPR","FPR")
     return(list(auc = aucout$auc, roc_curve = roc))
   }
@@ -133,12 +140,11 @@ predBMA <- function(bvsobj, X, resp, train_idx, test_idx, thr = 0.05,
   # ====================
   
   if(family=="survival"){
-
     TS <- resp;
     TS_tr <- TS[train_idx,]
     TS_te <- TS[test_idx,]
     if (!length(times)) stop("No times vector is set!")
-    aucout <- aucBMA_survival(X_tr,TS_tr,X_te,TS_te,tau,r,times,oprobs,omodels,k)
+    aucout <- aucBMA_survival(X_tr,TS_tr,X_te,TS_te,tau,r,nlptype_int,times,oprobs,omodels,k)
     return(aucout)
   }
 }

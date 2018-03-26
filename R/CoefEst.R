@@ -16,6 +16,9 @@
 #' second column is the censoring status for each observation.
 #' @param mod_cols A vector of column indices of the design matrix,
 #' representing the selected model.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+#' product moment prior. The default is set to piMOM prior.
 #' @param tau Hyperparameter \code{tau} of the iMOM prior.
 #' @param r Hyperparameter \code{r} of the iMOM prior.
 #' @param family Determines the type of data analysis. \code{logistic} is for
@@ -62,16 +65,18 @@
 #' coef <- CoefEst(X, TS, mod, tau = 1.8, r = 2, family = "survival")
 #' coef
 #'
-CoefEst <- function(X, resp, mod_cols, tau, r,
+CoefEst <- function(X, resp, mod_cols, nlptype = "piMOM", tau, r,
                         family = c("logistic", "survival")){
   
+  if(nlptype=="piMOM") nlptype_int <- 0
+  if(nlptype=="pMOM") nlptype_int <- 1
   if (family == "logistic"){
     X <- cbind(rep(1,length(resp)),X)
     exmat <- cbind(resp, X)
-    out <- lreg_coef_est(exmat, mod_cols, tau, r)
+    out <- lreg_coef_est(exmat, mod_cols, tau, r, nlptype_int)
   } else {
     exmat <- cbind(resp, X)
-    out <- cox_coef_est(exmat, mod_cols, tau, r)
+    out <- cox_coef_est(exmat, mod_cols, tau, r, nlptype_int)
   }
   return(out)
 }

@@ -5,9 +5,9 @@
 \title{High dimensional Bayesian variable selection using nonlocal priors}
 \usage{
 bvs(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
-  family = c("logistic", "survival"), hselect = TRUE, r = 1, tau = 0.25,
-  niter, mod_prior = c("unif", "beta"), inseed = NULL, ncpu = 4,
-  cplng = F)
+  family = c("logistic", "survival"), hselect = TRUE, nlptype = "piMOM",
+  r = 1, tau = 0.25, niter, mod_prior = c("unif", "beta"),
+  inseed = NULL, ncpu = 4, cplng = F)
 }
 \arguments{
 \item{X}{The \code{n} times \code{p} design matrix. The columns should
@@ -46,6 +46,10 @@ hazard model.}
 for hyperparameter selection should be run or not. The default value is
 \code{TRUE}. Note that in this setting, \code{r} is always chosen to be 1.}
 
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+product moment prior. The default is set to piMOM prior.}
+
 \item{r}{The paramter \code{r} of the iMOM prior, when no automatic
 procedure for hyperparameter selection is done. As a result, this is
 relevant only when \code{hselect = FALSE}, otherwise it is ignored.}
@@ -54,8 +58,8 @@ relevant only when \code{hselect = FALSE}, otherwise it is ignored.}
 procedure for hyperparameter selection is done. As a result, this is
 relevant only when \code{hselect = FALSE}, otherwise it is ignored.}
 
-\item{niter}{Number of iterations. For binary outcome data, this
-determines the number of MCMC iterations per CPU. For survival outcome data
+\item{niter}{Number of iterations. For binary response data, this
+determines the number of MCMC iterations per CPU. For survival response data
 this is the number of iterations per temperature schedule in the stochastic
 search algorithm.}
 
@@ -117,6 +121,7 @@ shown in this list as it is present in all of the models.}
 \item{inc_probs}{A vector of length \code{p+1} containing the posterior
 inclusion probability for each covariate in the design matrix. The order of
 columns is with respect to processed design matrix, \code{des_mat}.}
+\item{nlptype}{The type of nonlocal prior used in the analyses.}
 \item{des_mat}{The design matrix used in the analysis where fixed columns
 are moved to the beginning of the matrix and if \code{prep=TRUE}, the
 columns containing \code{NA} are all removed. The reported indices in
@@ -138,6 +143,7 @@ elements are not necessarily in the same order as the input design matrix,
 \code{X}, depending on existence of fixed columns in selection procedure.
 As a result, always match the indices to the columns of the design matrix
 that is reported as an output in \code{des_mat}.}
+\item{nlptype}{The type of nonlocal prior used in the analyses.}
 \item{cpl_flags}{A \code{k} by \code{1} binary vector, showing which pairs
 are coupled, (=\code{1}) and which are not, (= \code{0}).}
 \item{beta_hat}{A \code{k} by \code{(p+1)} matrix where each row is the
@@ -169,6 +175,8 @@ the outputs that can be checked in \code{des_mat}.}
 Barbieri et. al., this is defined to be the model consisting of those
 variables whose posterior inclusion probability is at least 1/2. The order
 of columns is similar to that is explained for \code{HPM}.}
+\item{beta_hat}{The coefficient vector for the selected model reported in
+\code{HPM}.}
 \item{max_prob_vec}{A \code{1000} by \code{1} vector of unnormalized
 probabilities of the first 1000 models with highest posterior probability
 among all visited models. If the total number of visited models is less than
@@ -181,6 +189,7 @@ corresponding entry in \code{max_prob_vec}.}
 \item{inc_probs}{A \code{p} by \code{1} vector containing the posterior
 inclusion probability for each covariate in the design matrix. The order of
 columns is with respect to processed design matrix, \code{des_mat}.}
+\item{nlptype}{The type of nonlocal prior used in the analyses.}
 \item{des_mat}{The design matrix used in the analysis where fixed columns
 are moved to the beginning of the matrix and if \code{prep=TRUE}, the
 columns containing \code{NA} are all removed. The reported indices in
@@ -232,9 +241,10 @@ colnames(X) <- paste("gene_",c(1:p),sep="")
 
 ### Running 'bvs' function without coupling and with hyperparamter selection
 ### procedure
-bout <- bvs(X, y, family = "logistic", mod_prior = "beta", niter = 50)
-
-### Highes Posterior Model
+bout <- bvs(X, y, family = "logistic", nlptype = "piMOM",
+            mod_prior = "beta", niter = 50)
+            
+### Highest Posterior Model
 bout$HPM
 
 ### Estimated Coefficients:

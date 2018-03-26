@@ -27,6 +27,8 @@ null_mle_lreg <- function(XX, n, p, cons, a, b, sprob, niters) {
 #' procedure.
 #' @param tau The paramter \code{tau} of the iMOM prior.
 #' @param r The paramter \code{r} of the iMOM prior.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. \code{0} is for piMOM and \code{1} is for pMOM.
 #' @param a The first parameter in beta distribution used as prior on model
 #' size. This parameter is equal to 1 when uinform-binomial prior is used.
 #' @param b The second paramter in beta distribution used as prior on model
@@ -110,10 +112,11 @@ null_mle_lreg <- function(XX, n, p, cons, a, b, sprob, niters) {
 #' }
 #' chain1 <- as.numeric(c(1, chain1))
 #' chain2 <- chain1
+#' nlptype <- 0 ## PiMOM nonlocal prior
 #' nf <- 0 ### No fixed columns
 #'
 #' ### Running the function
-#' bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,a,b,in_cons,loopcnt,cplng,chain2)
+#' bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,nlptype,a,b,in_cons,loopcnt,cplng,chain2)
 #'
 #' ### Number of visited models for this specific run:
 #' bvsout$num_vis_models
@@ -126,16 +129,16 @@ null_mle_lreg <- function(XX, n, p, cons, a, b, sprob, niters) {
 #'
 #' ### The unnormalized probability of the selected model:
 #' bvsout$max_prob
-logreg_bvs <- function(exmat, chain1, nf, tau, r, a, b, in_cons, loopcnt, cplng, chain2) {
-    .Call('BVSNLP_logreg_bvs', PACKAGE = 'BVSNLP', exmat, chain1, nf, tau, r, a, b, in_cons, loopcnt, cplng, chain2)
+logreg_bvs <- function(exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng, chain2) {
+    .Call('BVSNLP_logreg_bvs', PACKAGE = 'BVSNLP', exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng, chain2)
 }
 
-lreg_coef_est <- function(exmat, mod_cols, tau, r) {
-    .Call('BVSNLP_lreg_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r)
+lreg_coef_est <- function(exmat, mod_cols, tau, r, nlptype) {
+    .Call('BVSNLP_lreg_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, nlptype)
 }
 
-lreg_mod_prob <- function(exmat, mod_cols, tau, r, a, b) {
-    .Call('BVSNLP_lreg_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b)
+lreg_mod_prob <- function(exmat, mod_cols, tau, r, a, b, nlptype) {
+    .Call('BVSNLP_lreg_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b, nlptype)
 }
 
 null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
@@ -163,6 +166,8 @@ null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
 #' procedure.
 #' @param tau The paramter \code{tau} of the iMOM prior.
 #' @param r The paramter \code{r} of the iMOM prior.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. \code{0} is for piMOM and \code{1} is for pMOM. 
 #' @param a The first parameter in beta distribution used as prior on model
 #' size. This parameter is equal to 1 when uinform-binomial prior is used.
 #' @param b The second paramter in beta distribution used as prior on model
@@ -221,11 +226,12 @@ null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
 #' d <- 2 * ceiling(log(p))
 #' temps <- seq(3, 1, length.out = L)
 #' tau <- 0.5; r <- 1; a <- 6; b <- p-a
+#' nlptype <- 0 ### PiMOM nonlocal prior
 #' cur_cols <- c(1,2,3) ### Starting model for the search algorithm
 #' nf <- 0 ### No fixed columns
 #' 
 #'### Running the Function
-#' coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,a,b,d,L,J,temps)
+#' coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,nlptype,a,b,d,L,J,temps)
 #' 
 #' ### The number of visited model for this specific run:
 #' length(coxout$hash_key)
@@ -237,27 +243,27 @@ null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
 #' ### The unnormalized probability of the selected model:
 #' coxout$max_prob
 #' 
-cox_bvs <- function(exmat, cur_cols, nf, tau, r, a, b, d, L, J, temps) {
-    .Call('BVSNLP_cox_bvs', PACKAGE = 'BVSNLP', exmat, cur_cols, nf, tau, r, a, b, d, L, J, temps)
+cox_bvs <- function(exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps) {
+    .Call('BVSNLP_cox_bvs', PACKAGE = 'BVSNLP', exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps)
 }
 
 inc_prob_calc <- function(all_probs, vis_covs, p) {
     .Call('BVSNLP_inc_prob_calc', PACKAGE = 'BVSNLP', all_probs, vis_covs, p)
 }
 
-cox_coef_est <- function(exmat, mod_cols, tau, r) {
-    .Call('BVSNLP_cox_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r)
+cox_coef_est <- function(exmat, mod_cols, tau, r, nlptype) {
+    .Call('BVSNLP_cox_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, nlptype)
 }
 
-cox_mod_prob <- function(exmat, mod_cols, tau, r, a, b) {
-    .Call('BVSNLP_cox_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b)
+cox_mod_prob <- function(exmat, mod_cols, tau, r, a, b, nlptype) {
+    .Call('BVSNLP_cox_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b, nlptype)
 }
 
-aucBMA_logistic <- function(X_tr, y_tr, X_te, y_te, tau, r, probs, models, k) {
-    .Call('BVSNLP_aucBMA_logistic', PACKAGE = 'BVSNLP', X_tr, y_tr, X_te, y_te, tau, r, probs, models, k)
+aucBMA_logistic <- function(X_tr, y_tr, X_te, y_te, tau, r, nlptype, probs, models, k) {
+    .Call('BVSNLP_aucBMA_logistic', PACKAGE = 'BVSNLP', X_tr, y_tr, X_te, y_te, tau, r, nlptype, probs, models, k)
 }
 
-aucBMA_survival <- function(X_tr, TS_tr, X_te, TS_te, tau, r, times, probs, models, k) {
-    .Call('BVSNLP_aucBMA_survival', PACKAGE = 'BVSNLP', X_tr, TS_tr, X_te, TS_te, tau, r, times, probs, models, k)
+aucBMA_survival <- function(X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k) {
+    .Call('BVSNLP_aucBMA_survival', PACKAGE = 'BVSNLP', X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k)
 }
 

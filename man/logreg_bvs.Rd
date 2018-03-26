@@ -5,7 +5,8 @@
 \title{Non-parallel version of Bayesian variable selector for logistic regression
 data using nonlocal priors}
 \usage{
-logreg_bvs(exmat, chain1, nf, tau, r, a, b, in_cons, loopcnt, cplng, chain2)
+logreg_bvs(exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng,
+  chain2)
 }
 \arguments{
 \item{exmat}{An extended matrix where the first column is binary resonse
@@ -24,6 +25,9 @@ procedure.}
 \item{tau}{The paramter \code{tau} of the iMOM prior.}
 
 \item{r}{The paramter \code{r} of the iMOM prior.}
+
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. \code{0} is for piMOM and \code{1} is for pMOM.}
 
 \item{a}{The first parameter in beta distribution used as prior on model
 size. This parameter is equal to 1 when uinform-binomial prior is used.}
@@ -111,10 +115,11 @@ chain1 <- rbinom(p, 1, initProb)
 }
 chain1 <- as.numeric(c(1, chain1))
 chain2 <- chain1
+nlptype <- 0 ## PiMOM nonlocal prior
 nf <- 0 ### No fixed columns
 
 ### Running the function
-bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,a,b,in_cons,loopcnt,cplng,chain2)
+bvsout <- logreg_bvs(exmat,chain1,nf,tau,r,nlptype,a,b,in_cons,loopcnt,cplng,chain2)
 
 ### Number of visited models for this specific run:
 bvsout$num_vis_models

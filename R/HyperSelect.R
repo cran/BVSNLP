@@ -15,6 +15,9 @@
 #' @param eff_size This is the expected effect size in the model for a
 #' standardized design matrix, which is basically the coefficient value that is
 #' expected to occur the most based on some prior knowledge.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+#' product moment prior. The default is set to piMOM prior.
 #' @param iter The number of iteration needed to simulate from null model in
 #' order to approximate the null MLE density.
 #' @param mod_prior Type of prior used for model space. \code{uniform} is for
@@ -57,10 +60,10 @@
 #' Xout <- PreProcess(X)
 #' XX <- Xout$X
 #' hparam <- HyperSelect(XX, y, iter = 1000, mod_prior = "beta",
-#' family = "logistic")
+#'                       family = "logistic")
 #'
 #' hparam$tau
-HyperSelect <- function(X, resp, eff_size = 0.7, 
+HyperSelect <- function(X, resp, eff_size = 0.7, nlptype = "piMOM", 
                         iter = 10000, mod_prior=c("unif","beta"),
                         family = c("logistic", "survival")){
   
@@ -73,22 +76,36 @@ HyperSelect <- function(X, resp, eff_size = 0.7,
   }
   # ================================
   
-  mypimom <- function(x, tau, r){
-    sapply(x, function(x) if (x >= 0) 0.5 * (1 + pgamma(1 / x ^ 2, r / 2,
-                                                        tau, lower.tail = F))
-           else 0.5 * pgamma(1 / x ^ 2, r / 2, tau))
+  mydmom <- function(x, tau, r){
+    out <- (2*pi)^(-0.5)*tau^(-r-0.5)*exp(-x^2/(2*tau))*x^(2*r)
+    out[is.na(out)] <- 0
+    return(out)
   }
+  # ================================ 
+  
+  mypimom_tmp <- function(x, tau, r)
+    if (x <= 0) 0.5 * pgamma(1 / x ^ 2, r / 2, tau) else 1-(0.5 * pgamma(1 / x ^ 2, r / 2, tau))
+  mypimom <- Vectorize(mypimom_tmp)
   # ================================
   
-  Obj_Fun <- function(par, p, betalim, betasd, betam, mydimom, mypimom){
+  mypmom_tmp <- function(x, tau, r){
+    a <- tau^(0.5-r)*(sqrt(tau)*pnorm(abs(x)/sqrt(tau))-abs(x)/sqrt(2*pi)*exp(-0.5*x^2/tau))
+    if (x <= 0) 1-a else a
+  }
+  mypmom <- Vectorize(mypmom_tmp)
+  # ================================
+  
+  Obj_Fun <- function(par, p, betalim, betasd, betam, mydimom, mypimom, mydmom, mypmom, nlptype){
     
     tau <- par
     r <- 1
     
-    froot <- function(x, pars){
-      mydimom(x, tau=pars, r=1) - dnorm(x, betam, betasd)
+    froot <- function(x, pars, nlptype){
+      if(nlptype==0) mydimom(x, tau=pars, r=1) - dnorm(x, betam, betasd)
+      if(nlptype==1) mydmom(x, tau=pars, r=1) - dnorm(x, betam, betasd)
     }
-    pv1 <- tryCatch({pv <- uniroot(froot, pars = tau, interval = c(0.000001, 7))$root}
+    
+    pv1 <- tryCatch({pv <- uniroot(froot, pars = tau, nlptype = nlptype, interval = c(0.000001, 7))$root}
                    , error = function(err){
                      return(NA)
                    })
@@ -96,12 +113,15 @@ HyperSelect <- function(X, resp, eff_size = 0.7,
     
     pv <- c(-pv, pv)
     ov1 <- 1 - diff(pnorm(pv, betam, betasd))
-    ov2 <- diff(mypimom(pv, tau = tau, r = 1))
+    if (nlptype==0) ov2 <- diff(mypimom(pv, tau = tau, r = 1))
+    if (nlptype==1) ov2 <- diff(mypmom(pv, tau = tau, r = 1))
     ov <- ov1 + ov2
     out <- abs(ov - 1 / sqrt(p))
     return(out)
   }
   # ========================== Main =================================
+  if(nlptype=="piMOM") nlptype_int <- 0
+  if(nlptype=="pMOM") nlptype_int <- 1
   XX <- X
   bincols <- which(apply(XX, 2, function(x) {all(na.omit(x) %in% 0:1)}))
   if (length(bincols)) XX <- XX[, -bincols]
@@ -157,7 +177,8 @@ HyperSelect <- function(X, resp, eff_size = 0.7,
   init <- 1
   res <- nlminb(init, objective = Obj_Fun, p = p, betalim = betalim,
                 betasd = betasd, betam = betam, mydimom = mydimom,
-                mypimom = mypimom,lower=0,upper=20)
+                mypimom = mypimom, mydmom = mydmom, mypmom=mypmom,
+                nlptype = nlptype_int, lower=0,upper=20)
   
   pars <- res$par
   pars <- round(pars, 2)

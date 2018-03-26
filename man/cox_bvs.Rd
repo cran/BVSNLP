@@ -5,7 +5,7 @@
 \title{Non-parallel version of Bayesian variable selector for survival data using
 nonlocal priors}
 \usage{
-cox_bvs(exmat, cur_cols, nf, tau, r, a, b, d, L, J, temps)
+cox_bvs(exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps)
 }
 \arguments{
 \item{exmat}{An extended matrix where the first two columns are survival
@@ -23,6 +23,9 @@ procedure.}
 \item{tau}{The paramter \code{tau} of the iMOM prior.}
 
 \item{r}{The paramter \code{r} of the iMOM prior.}
+
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. \code{0} is for piMOM and \code{1} is for pMOM.}
 
 \item{a}{The first parameter in beta distribution used as prior on model
 size. This parameter is equal to 1 when uinform-binomial prior is used.}
@@ -87,11 +90,12 @@ L <- 10; J <- 10
 d <- 2 * ceiling(log(p))
 temps <- seq(3, 1, length.out = L)
 tau <- 0.5; r <- 1; a <- 6; b <- p-a
+nlptype <- 0 ### PiMOM nonlocal prior
 cur_cols <- c(1,2,3) ### Starting model for the search algorithm
 nf <- 0 ### No fixed columns
 
 ### Running the Function
-coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,a,b,d,L,J,temps)
+coxout <- cox_bvs(exmat,cur_cols,nf,tau,r,nlptype,a,b,d,L,J,temps)
 
 ### The number of visited model for this specific run:
 length(coxout$hash_key)

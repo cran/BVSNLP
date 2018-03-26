@@ -4,7 +4,8 @@
 \alias{CoefEst}
 \title{Coefficient estimation for a specific set of covariates}
 \usage{
-CoefEst(X, resp, mod_cols, tau, r, family = c("logistic", "survival"))
+CoefEst(X, resp, mod_cols, nlptype = "piMOM", tau, r, family = c("logistic",
+  "survival"))
 }
 \arguments{
 \item{X}{The design matrix. It is assumed that the preprocessing steps have
@@ -22,6 +23,10 @@ second column is the censoring status for each observation.}
 
 \item{mod_cols}{A vector of column indices of the design matrix,
 representing the selected model.}
+
+\item{nlptype}{Determines the type of nonlocal prior that is used in the
+analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+product moment prior. The default is set to piMOM prior.}
 
 \item{tau}{Hyperparameter \code{tau} of the iMOM prior.}
 

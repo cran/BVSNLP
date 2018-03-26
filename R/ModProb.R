@@ -13,6 +13,9 @@
 #' second column is the censoring status for each observation.
 #' @param mod_cols A vector of column indices of the design matrix,
 #' representing the model.
+#' @param nlptype Determines the type of nonlocal prior that is used in the
+#' analyses. It can be "piMOM" for product inverse moment prior, or "pMOM" for
+#' product moment prior. The default is set to piMOM prior.
 #' @param tau Hyperparameter \code{tau} of the iMOM prior.
 #' @param r Hyperparameter \code{r} of the iMOM prior.
 #' @param a First parameter in the beta binomial prior.
@@ -52,18 +55,20 @@
 #' ### parameters for prior densities
 #' mod <- c(1:3)
 #' Mprob <- ModProb(X, y, mod, tau = 0.7, r = 1, a = 7, b = 993,
-#' family = "logistic")
+#'                  family = "logistic")
 #'
 #' Mprob
-ModProb <- function(X, resp, mod_cols, tau, r, a, b,
+ModProb <- function(X, resp, mod_cols, nlptype = "piMOM", tau, r, a, b,
                     family = c("logistic", "survival")){
 
+  if(nlptype=="piMOM") nlptype_int <- 0
+  if(nlptype=="pMOM") nlptype_int <- 1
   if (family == "logistic"){
     exmat <- cbind(resp, X)
-    out <- lreg_mod_prob(exmat, mod_cols, tau, r, a, b)
+    out <- lreg_mod_prob(exmat, mod_cols, tau, r, a, b, nlptype_int)
   } else {
     exmat <- cbind(resp, X)
-    out <- cox_mod_prob(exmat, mod_cols, tau, r, a, b)
+    out <- cox_mod_prob(exmat, mod_cols, tau, r, a, b, nlptype_int)
   }
   return(out)
 }
