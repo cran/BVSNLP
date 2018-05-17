@@ -4,10 +4,10 @@
 \alias{bvs}
 \title{High dimensional Bayesian variable selection using nonlocal priors}
 \usage{
-bvs(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
+bvs(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.5,
   family = c("logistic", "survival"), hselect = TRUE, nlptype = "piMOM",
-  r = 1, tau = 0.25, niter, mod_prior = c("unif", "beta"),
-  inseed = NULL, ncpu = 4, cplng = F)
+  r = 1, tau = 0.25, niter = 30, mod_prior = c("unif", "beta"),
+  inseed = NULL, cplng = FALSE, ncpu = 4, parallel.MPI = FALSE)
 }
 \arguments{
 \item{X}{The \code{n} times \code{p} design matrix. The columns should
@@ -75,8 +75,10 @@ reproducible. This parameter is ignored in logistic regression models when
 \code{cplng = FALSE}. The default value is \code{NULL} which means that each
 time the search for model space is started from different starting points.
 In case it is set to a number, it initializes the RNG for the first task and
-subsequent tasks to get separate substreams, using L'Ecuyer algorithm as
-described in doMPI package.}
+subsequent tasks to get separate substreams.}
+
+\item{cplng}{This parameter is only used in logistic regression models, and
+indicating if coupling algorithm for MCMC output should be performed or not.}
 
 \item{ncpu}{This is the number of cpus used in parallel processing. For
 logistic regression models this is the number of parallel coupled chains
@@ -84,8 +86,12 @@ run at the same time. For survival outcome data this is the number of cpus
 doing stochastic search at the same time to increase th enumber of visited
 models.}
 
-\item{cplng}{This parameter is only used in logistic regression models, and
-indicating if coupling algorithm for MCMC output should be performed or not.}
+\item{parallel.MPI}{A boolean variable determining if MPI is used for
+parallel processing or not. Note that in order to use this feature, your
+system should support MPI and \code{Rmpi} and \code{doMPI} packages should
+already be installed. The default is set to \code{FALSE} but in case your
+system have the requirements, it is recommended to set this parameter to
+\code{TRUE} as it is more efficient and results in faster run-time.}
 }
 \value{
 It returns a list containing different objects that depend on the

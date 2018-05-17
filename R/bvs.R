@@ -70,15 +70,20 @@
 #' \code{cplng = FALSE}. The default value is \code{NULL} which means that each
 #' time the search for model space is started from different starting points.
 #' In case it is set to a number, it initializes the RNG for the first task and
-#' subsequent tasks to get separate substreams, using L'Ecuyer algorithm as
-#' described in doMPI package.
+#' subsequent tasks to get separate substreams.
+#' @param cplng This parameter is only used in logistic regression models, and
+#' indicating if coupling algorithm for MCMC output should be performed or not.
 #' @param ncpu This is the number of cpus used in parallel processing. For
 #' logistic regression models this is the number of parallel coupled chains
 #' run at the same time. For survival outcome data this is the number of cpus
 #' doing stochastic search at the same time to increase th enumber of visited
 #' models.
-#' @param cplng This parameter is only used in logistic regression models, and
-#' indicating if coupling algorithm for MCMC output should be performed or not.
+#' @param parallel.MPI A boolean variable determining if MPI is used for
+#' parallel processing or not. Note that in order to use this feature, your
+#' system should support MPI and \code{Rmpi} and \code{doMPI} packages should
+#' already be installed. The default is set to \code{FALSE} but in case your
+#' system have the requirements, it is recommended to set this parameter to
+#' \code{TRUE} as it is more efficient and results in faster run-time.
 #' @return It returns a list containing different objects that depend on the
 #' family of the model and the coupling flag for logistic regression models.
 #' The following describes the objects in the output list based on different
@@ -243,15 +248,15 @@
 #' 
 #' ### Number of Visited Models:
 #' bout$num_vis_models
-bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
+bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.5,
                 family = c("logistic", "survival"), hselect = TRUE,
-                nlptype = "piMOM", r = 1, tau = 0.25, niter,
-                mod_prior = c("unif", "beta"), inseed = NULL, ncpu = 4,
-                cplng = F){
+                nlptype = "piMOM", r = 1, tau = 0.25, niter = 30,
+                mod_prior = c("unif", "beta"), inseed = NULL, cplng = FALSE,
+                ncpu = 4, parallel.MPI=FALSE){
   
   if(family=="logistic"){
     # ==================== Data pre-processing =======================
-
+    
     nf <- length(fixed_cols)
     if (nf){
       X1 <- X[,fixed_cols]; g1 <- colnames(X[,fixed_cols])
@@ -259,7 +264,7 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       X <- cbind(X1,X2); colnames(X) <- c(g1,g2)
       if(length(which(is.na(X1)))) warning("At least one of fixed columns contain NA and will be removed if preprocessing is activated!")
     }
-        
+    
     if (prep){
       Xin <- PreProcess(X)
       X <- Xin$X
@@ -365,40 +370,78 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
         lapply(seq_along(x),
                function(i) c(x[[i]], lapply(list(...), function(y) y[[i]])))
       }
-      cl <- makeCluster(ncpu)
-      registerDoParallel(cl)
-      opts <- list(preschedule=TRUE)
-      if (!is.null(inseed)) {clusterSetRNGStream(cl, inseed)}
-      ParOut <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
-                        .init = list(list(), list(), list(), list()),
-                        .packages = 'BVSNLP',
-                        .options.snow = opts ) %dopar% {
-                          
-                          schain <- p
-                          while (schain > cons || schain == 0) {
-                            chain1 <- rbinom(p-nf, 1, initProb)
-                            schain <- sum(chain1)
-                          }
-                          chain1 <- as.numeric(c(rep(1,nf+1), chain1))
-                          schain <- p
-                          while (schain > cons || schain == 0) {
-                            chain2 <- rbinom(p-nf, 1, initProb)
-                            schain <- sum(chain2)
-                          }
-                          chain2 <- as.numeric(c(rep(1,nf+1), chain2))
-                          
-                          Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, nlptype_int, a, b,
-                                                cons, niter, cplng, chain2)
-                          
-                          maxChain <- as.logical(Lregout$max_chain)
-                          maxMarg <- Lregout$max_prob
-                          cflag <- Lregout$cplng_flag
-                          bhat <- numeric(p + 1)
-                          bhat[maxChain] <- Lregout$beta_hat
-                          list(maxChain, maxMarg, cflag, bhat)
-                        }
       
-      stopCluster(cl)
+      if(parallel.MPI){
+        if (!requireNamespace("doMPI", quietly = TRUE)) {
+          stop("Package doMPI needed for this function to work. Please install it.",
+               call. = FALSE)
+        } else {
+          cl <- doMPI::startMPIcluster(count = ncpu)
+          doMPI::registerDoMPI(cl)
+          parout <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
+                            .init = list(list(), list(), list(), list()),
+                            .packages = 'BVSNLP',
+                            .options.mpi = list(seed = inseed)) %dopar% {
+                              schain <- p
+                              while (schain > cons || schain == 0) {
+                                chain1 <- rbinom(p-nf, 1, initProb)
+                                schain <- sum(chain1)
+                              }
+                              chain1 <- as.numeric(c(rep(1,nf+1), chain1))
+                              schain <- p
+                              while (schain > cons || schain == 0) {
+                                chain2 <- rbinom(p-nf, 1, initProb)
+                                schain <- sum(chain2)
+                              }
+                              chain2 <- as.numeric(c(rep(1,nf+1), chain2))
+                              
+                              Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, nlptype_int, a, b,
+                                                    cons, niter, cplng, chain2)
+                              
+                              maxChain <- as.logical(Lregout$max_chain)
+                              maxMarg <- Lregout$max_prob
+                              cflag <- Lregout$cplng_flag
+                              bhat <- numeric(p + 1)
+                              bhat[maxChain] <- Lregout$beta_hat
+                              list(maxChain, maxMarg, cflag, bhat)
+                            }
+          doMPI::closeCluster(cl)
+        }
+        
+      } else {
+        cl <- makeCluster(ncpu)
+        registerDoParallel(cl)
+        opts <- list(preschedule=TRUE)
+        if (!is.null(inseed)) {clusterSetRNGStream(cl, inseed)}
+        ParOut <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
+                          .init = list(list(), list(), list(), list()),
+                          .packages = 'BVSNLP',
+                          .options.snow = opts ) %dopar% {
+                            schain <- p
+                            while (schain > cons || schain == 0) {
+                              chain1 <- rbinom(p-nf, 1, initProb)
+                              schain <- sum(chain1)
+                            }
+                            chain1 <- as.numeric(c(rep(1,nf+1), chain1))
+                            schain <- p
+                            while (schain > cons || schain == 0) {
+                              chain2 <- rbinom(p-nf, 1, initProb)
+                              schain <- sum(chain2)
+                            }
+                            chain2 <- as.numeric(c(rep(1,nf+1), chain2))
+                            
+                            Lregout <- logreg_bvs(exmat, chain1, nf, tau, r, nlptype_int, a, b,
+                                                  cons, niter, cplng, chain2)
+                            
+                            maxChain <- as.logical(Lregout$max_chain)
+                            maxMarg <- Lregout$max_prob
+                            cflag <- Lregout$cplng_flag
+                            bhat <- numeric(p + 1)
+                            bhat[maxChain] <- Lregout$beta_hat
+                            list(maxChain, maxMarg, cflag, bhat)
+                          }
+        stopCluster(cl)
+      }
       
       MaxChain <- matrix(unlist(ParOut[[1]]), ncol = (p + 1), byrow = T)
       MaxMarg <- unlist(ParOut[[2]])
@@ -480,28 +523,55 @@ bvs <- function(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.7,
       lapply(seq_along(x),
              function(i) c(x[[i]], lapply(list(...), function(y) y[[i]])))
     }
-    cl <- makeCluster(ncpu)
-    registerDoParallel(cl)
-    opts <- list(preschedule=TRUE)
-    if (!is.null(inseed)) {clusterSetRNGStream(cl, inseed)}
-    parout <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
-                      .init = list(list(), list(), list(), list(), list(), list()),
-                      .packages = 'BVSNLP',
-                      .options.snow = opts ) %dopar% {
-                        
-                        cur_model <- sample(sfidx:p, 3);
-                        if (nf > 0) cur_model <- c(1:nf,cur_model)
-                        coxout <- cox_bvs(exmat, cur_model, nf, tau, r, nlptype_int, a, b,
-                                          d, L, J, temps)
-                        
-                        maxmod <- coxout$max_model
-                        maxprob <- coxout$max_prob
-                        hashkey <- coxout$hash_key
-                        allprobs <- coxout$all_probs
-                        viscovs <- coxout$vis_covs_list
-                        list(maxmod, maxprob, hashkey, allprobs, cur_model, viscovs)#,vismodels)
-                      }
-    stopCluster(cl)
+    
+    if(parallel.MPI){
+      if (!requireNamespace("doMPI", quietly = TRUE)) {
+        stop("Package doMPI needed for this function to work. Please install it.",
+             call. = FALSE)
+      } else {
+        cl <- doMPI::startMPIcluster(count = ncpu)
+        doMPI::registerDoMPI(cl)
+        parout <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
+                          .init = list(list(), list(), list(), list(), list(), list()),
+                          .packages = 'BVSNLP',
+                          .options.mpi = list(seed = inseed)) %dopar% {
+                            cur_model <- sample(sfidx:p, 3)
+                            if (nf > 0) cur_model <- c(1:nf,cur_model)
+                            coxout <- cox_bvs(exmat, cur_model, nf, tau, r, nlptype_int, a, b,
+                                              d, L, J, temps)
+                            
+                            maxmod <- coxout$max_model
+                            maxprob <- coxout$max_prob
+                            hashkey <- coxout$hash_key
+                            allprobs <- coxout$all_probs
+                            viscovs <- coxout$vis_covs_list
+                            list(maxmod, maxprob, hashkey, allprobs, cur_model, viscovs)#,vismodels)
+                          }
+        doMPI::closeCluster(cl)
+      }
+    } else {
+      cl <- makeCluster(ncpu)
+      registerDoParallel(cl)
+      opts <- list(preschedule=TRUE)
+      if (!is.null(inseed)) {clusterSetRNGStream(cl, inseed)}
+      parout <- foreach(j = 1:ncpu, .combine = "comb", .multicombine = TRUE,
+                        .init = list(list(), list(), list(), list(), list(), list()),
+                        .packages = 'BVSNLP',
+                        .options.snow = opts ) %dopar% {
+                          cur_model <- sample(sfidx:p, 3);
+                          if (nf > 0) cur_model <- c(1:nf,cur_model)
+                          coxout <- cox_bvs(exmat, cur_model, nf, tau, r, nlptype_int, a, b,
+                                            d, L, J, temps)
+                          
+                          maxmod <- coxout$max_model
+                          maxprob <- coxout$max_prob
+                          hashkey <- coxout$hash_key
+                          allprobs <- coxout$all_probs
+                          viscovs <- coxout$vis_covs_list
+                          list(maxmod, maxprob, hashkey, allprobs, cur_model, viscovs)#,vismodels)
+                        }
+      stopCluster(cl)
+    }
     
     Hash_Key <- unlist(parout[[3]])
     All_Probs <- unlist(parout[[4]])

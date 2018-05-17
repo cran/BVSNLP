@@ -198,6 +198,7 @@ public:
     Eigen::MatrixXd Xtr = X.transpose();
     Eigen::MatrixXd AX(p,n);
     Eigen::VectorXd sneweXB(n);
+    Eigen::VectorXd auxvec(p);
     Eigen::VectorXd xbeta;
     xbeta.noalias() = X * beta;
     if ((xbeta.array() > 500).any()){ 
@@ -206,12 +207,16 @@ public:
     }
     Eigen::VectorXd tmp_xb = xbeta + xbeta_m;
     Eigen::VectorXd enewXB = tmp_xb.array().exp();
-    AX = Xtr * enewXB.asDiagonal();
-    for (int i=0; i < n; i++){
-      snewexbval = enewXB.tail(n-i).sum();
-      XS.col(i) = AX.rightCols(n-i).rowwise().sum()/snewexbval;
+    
+    snewexbval = 0;
+    auxvec.setZero();
+    for (int i=n-1; i >= 0; i--){
+      snewexbval = enewXB(i) + snewexbval;
+      auxvec = enewXB(i)*Xtr.col(i) + auxvec;
+      XS.col(i) = auxvec/snewexbval;
       sneweXB(i) = snewexbval;
     }
+    
     Eigen::VectorXd lnewseXB = sneweXB.array().log();
     const double f = status.dot(lnewseXB-xbeta);
     grad.noalias() = (XS-Xtr) * status;
@@ -226,14 +231,13 @@ class Cox_MAP: public Numer::MFuncGrad
 private:
   const MapMat XX;
   const MapVec status;
-  const MapVec xbeta_m;
   double tau;
   double r;
   const int nlptype;
   
 public:
-  Cox_MAP(const MapMat x_, const MapVec status_, const MapVec xbeta_m_, double tau_, double r_, const int nlptype_) :
-  XX(x_), status(status_), xbeta_m(xbeta_m_), tau(tau_), r(r_), nlptype(nlptype_) {}
+  Cox_MAP(const MapMat x_, const MapVec status_, double tau_, double r_, const int nlptype_) :
+  XX(x_), status(status_), tau(tau_), r(r_), nlptype(nlptype_) {}
   
   double f_grad(Numer::Constvec& beta, Numer::Refvec grad)
   {
@@ -245,21 +249,20 @@ public:
     Eigen::MatrixXd Xtr = XX.transpose();
     Eigen::MatrixXd AX(p,n);
     Eigen::VectorXd sneweXB(n);
+    Eigen::VectorXd auxvec(p);
     Eigen::VectorXd xbeta;
     xbeta.noalias() = XX * beta;
-    if ((xbeta.array() > 500).any()){
-      for (int i=0; i < xbeta.size(); i++)
-        if (xbeta(i) >500) xbeta(i)=500;
-    }
-    Eigen::VectorXd tmp_xb = xbeta + xbeta_m;
-    Eigen::VectorXd enewXB = tmp_xb.array().exp();
-    AX = Xtr * enewXB.asDiagonal();
+    Eigen::VectorXd enewXB = xbeta.array().exp();
     
-    for (int i=0; i < n; i++){
-      snewexbval = enewXB.tail(n-i).sum();
-      XS.col(i) = AX.rightCols(n-i).rowwise().sum()/snewexbval;
+    snewexbval = 0;
+    auxvec.setZero();
+    for (int i=n-1; i >= 0; i--){
+      snewexbval = enewXB(i) + snewexbval;
+      auxvec = enewXB(i)*Xtr.col(i) + auxvec;
+      XS.col(i) = auxvec/snewexbval;
       sneweXB(i) = snewexbval;
     }
+    
     Eigen::VectorXd lnewseXB = sneweXB.array().log();
     const double negloglik = status.dot(lnewseXB-xbeta);
     Eigen::VectorXd negloglikgrad  = (XS-Xtr) * status;
@@ -305,7 +308,7 @@ public:
   Cox_LogMarginal(const MapMat x_, const MapVec beta_, const MapVec status_, double tau_, double r_, const int nlptype_) :
   XX(x_), beta(beta_), status(status_), tau(tau_), r(r_), nlptype(nlptype_) {}
   
-  double marginal_prob() {
+  double marginal_prob(){
     double cov;
     double logCond;
     double logPrior;
@@ -323,17 +326,22 @@ public:
     Eigen::MatrixXd A(n,p);
     Eigen::MatrixXd tmp_mI, mI, AuxMat, Diagxjc;
     Eigen::VectorXd sneweXB(n);
+    Eigen::VectorXd auxvec(p);
+    Eigen::VectorXd auxvecH(p);
     Eigen::VectorXd xbeta;
     xbeta.noalias() = XX * beta;
     Eigen::VectorXd enewXB = xbeta.array().exp();
     Eigen::VectorXd B2 = beta.array().square();
     
-    AX = Xtr * enewXB.asDiagonal();
-    for (int i=0; i < n; i++){
-      snewexbval = enewXB.tail(n-i).sum();
-      XS.col(i) = AX.rightCols(n-i).rowwise().sum()/snewexbval;
+    snewexbval = 0;
+    auxvec.setZero();
+    for (int i=n-1; i >= 0; i--){
+      snewexbval = enewXB(i) + snewexbval;
+      auxvec = enewXB(i)*Xtr.col(i) + auxvec;
+      XS.col(i) = auxvec/snewexbval;
       sneweXB(i) = snewexbval;
     }
+    
     Eigen::VectorXd lnewseXB = sneweXB.array().log();
     
     Eigen::VectorXd diagvec, lp1, lp2;
@@ -358,11 +366,11 @@ public:
     }
     
     for(int s=0; s < p; s++){
-      for (int i=0; i < n; i++){
+      auxvecH.setZero();
+      for (int i=n-1; i>=0; i--){
+        auxvecH = Xtr.col(i)*XX(i,s)*enewXB(i) + auxvecH;
+        U = auxvecH/sneweXB(i);
         W = XS(s,i)*XS.col(i);
-        xjc= XX.col(s).tail(n-i).array()/sneweXB(i);
-        Diagxjc = xjc.asDiagonal();
-        U = Xtr.rightCols(n-i)*Diagxjc*enewXB.tail(n-i);
         AuxMat = U - W;
         A.row(i) = AuxMat.transpose();
       }
@@ -572,8 +580,8 @@ Rcpp::NumericVector cox_beta_est(arma::mat cur_model, const MapVec Status, doubl
   int k = cur_model.n_cols;
   int n = cur_model.n_rows;
   arma::vec cur_xbeta = arma::zeros<arma::vec>(n);
-  MapMat fxx(cur_model.memptr(), n, k);
   const MapVec Cur_XBeta(cur_xbeta.memptr(), n);
+  MapMat fxx(cur_model.memptr(), n, k);
   Eigen::VectorXd coxph_coef(k);
   coxph_coef.setZero();
   
@@ -584,7 +592,7 @@ Rcpp::NumericVector cox_beta_est(arma::mat cur_model, const MapVec Status, doubl
     return(Rcpp::wrap(-999999));
   } else {
     Eigen::VectorXd betahat = coxph_coef;
-    Cox_MAP FM(fxx,Status,Cur_XBeta,tau,r,nlptype);
+    Cox_MAP FM(fxx,Status,tau,r,nlptype);
     double fopt;
     int map_status = Numer::optim_lbfgs(FM, betahat, fopt, maxit, eps_f, eps_g);
     if (map_status < 0){
