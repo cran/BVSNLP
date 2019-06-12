@@ -1,7 +1,8 @@
 useDynLib(BVSNLP, .registration=TRUE)
 importFrom(Rcpp, sourceCpp)
 importFrom(stats, aggregate, dnorm, na.omit, nlminb,
-           pgamma, pnorm, rbeta, rbinom, sd, uniroot)
+           pgamma, pnorm, rbeta, rbinom, sd, uniroot,
+           model.matrix)
 import(doParallel)
 import(foreach)
 import(parallel)

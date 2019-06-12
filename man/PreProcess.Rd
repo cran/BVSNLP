@@ -5,7 +5,7 @@
 \title{Preprocessing the design matrix, preparing it for variable selection
 procedure}
 \usage{
-PreProcess(X)
+PreProcess(X, logT = FALSE)
 }
 \arguments{
 \item{X}{The \code{n} times \code{p} design matrix. The columns should
@@ -13,6 +13,10 @@ represent genes and rows represent the observations. The column names are
 used as gene names so they should not be left as \code{NULL}. Note that the
 input matrix \code{X} should NOT contain vector of \code{1}'s representing
 the intercept.}
+
+\item{logT}{A boolean variable determining if log transform should be done
+on continuous columns before scaling them. Note that those columns should
+not contain any zeros or negative values.}
 }
 \value{
 It returns a list having the following objects:
@@ -22,9 +26,10 @@ procedure. Binary columns are moved to the end of the design matrix.}
 matrix.}
 }
 \description{
-This function preprocesses the design matrix by removing those
+This function preprocesses the design matrix by removing
 columns that contain \code{NA}'s or are all zero. It also standardizes
-non-binary columns to have mean zero and variance one.
+non-binary columns to have mean zero and variance one. The user has the
+choice of log transforming continuous covariates before scaling them.
 }
 \examples{
 ### Constructing a synthetic design matrix for the purpose of preprocessing

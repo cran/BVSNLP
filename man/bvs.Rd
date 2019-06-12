@@ -4,34 +4,41 @@
 \alias{bvs}
 \title{High dimensional Bayesian variable selection using nonlocal priors}
 \usage{
-bvs(X, resp, prep = TRUE, fixed_cols = NULL, eff_size = 0.5,
-  family = c("logistic", "survival"), hselect = TRUE, nlptype = "piMOM",
-  r = 1, tau = 0.25, niter = 30, mod_prior = c("unif", "beta"),
-  inseed = NULL, cplng = FALSE, ncpu = 4, parallel.MPI = FALSE)
+bvs(X, resp, prep = TRUE, logT = FALSE, fixed_cols = NULL,
+  eff_size = 0.5, family = c("logistic", "survival"), hselect = TRUE,
+  nlptype = "piMOM", r = 1, tau = 0.25, niter = 30,
+  mod_prior = c("unif", "beta"), inseed = NULL, cplng = FALSE, ncpu = 4,
+  parallel.MPI = FALSE)
 }
 \arguments{
-\item{X}{The \code{n} times \code{p} design matrix. The columns should
-represent genes and rows represent the observations. The column names are
-used as gene names so they should not be left as \code{NULL}. Moreover,
-the minimum number of columns allowed is 3. For logistic regression, 
-\code{X} should NOT contain vector of \code{1}'s representing the intercept
-as it will be added automatically.}
+\item{X}{The \code{n} times \code{p} input data frame containing the
+covariates in the design matrix. The columns should represent genes and rows
+represent the observed samples. The column names are used as gene names so
+they should not be left as \code{NULL}. Moreover, the minimum number of
+columns allowed is 3. The input data frame can also contain categorical
+covariates that are appropriately defined as factor variables in R.}
 
 \item{resp}{For logistic regression models it is the binary response
 vector. For Cox proportional hazard models this is a two column matrix
 where the first column contains survival time vector and the second column
 is the censoring status for each observation.}
 
-\item{prep}{A logical value determining if the preprocessing step should
+\item{prep}{A boolean variable determining if the preprocessing step should
 be performed on the design matrix or not. That step contains removing
 columns that have \code{NA}'s or all their elements are equal to 0, along
 with standardizing non-binary columns. This step is recommended and thus the
 default value is \code{TRUE}.}
 
-\item{fixed_cols}{A vector of indices showing those columns of the design
-matrix that are not supposed to enter the selection procedure. These
+\item{logT}{A boolean variable determining if log transform should be done
+on continuous columns before scaling them in the preprocessing step.
+Note that those columns should not contain any zeros or negative values.}
+
+\item{fixed_cols}{A vector of indices showing the columns in the input
+data frame that are not subject to the the selection procedure. These
 columns are always in the final selected model. Note that if any of these
-columns contain \code{NA}, they will be removed.}
+columns contain \code{NA}, they will be removed. Moreover, if a categorical
+variable with \code{k} levels is chosen to be fixed, all \code{k-1} dummy
+variables associated with it will be selected in the final model.}
 
 \item{eff_size}{This is the expected effect size in the model for a
 standardized design matrix, which is basically the coefficient value that is
@@ -218,13 +225,15 @@ datasets. In the former, MCMC is used to search in the model space while for
 the latter a stochastic search does that job. This function has the option
 to do all the mentioned tasks in a parallel fashion, exploiting hundreds of
 CPUs. It is highly recommended to use a cluster for this purpose. This
-function also supports having fixed columns in the design matrix which are
-always in the final model and do not enter the selection procedure. Clinical
-variables such as age, gender or stage of cancer are some examples. For the
-output, it reports necessary measurements that is common in Bayesian
-variable selection algorithms. They include Highest Posterior Probability
-model, median probability model and posterior inclusion probability for each
-of the covariates in the design matrix.
+function also supports fixing covariates in variable selection process,
+thus making them included in the final selected model with probability 1.
+Categorical variable are also supported by this function as input covariates
+to the selection process. They need to be well defined factor variables as
+part of the input data frame. For the output, this function reports
+necessary measurements that is common in Bayesian variable selection
+algorithms. They include Highest Posterior Probability model, median
+probability model and posterior inclusion probability for each of the
+covariates in the design matrix.
 }
 \examples{
 ### Simulating Logistic Regression Data
@@ -244,6 +253,7 @@ XB <- X\%*\%beta
 probs <- as.vector(exp(XB)/(1+exp(XB)))
 y <- rbinom(n,1,probs)
 colnames(X) <- paste("gene_",c(1:p),sep="")
+X <- as.data.frame(X)
 
 ### Running 'bvs' function without coupling and with hyperparamter selection
 ### procedure

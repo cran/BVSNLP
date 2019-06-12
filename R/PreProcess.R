@@ -1,14 +1,18 @@
 #' Preprocessing the design matrix, preparing it for variable selection
 #' procedure
 #'
-#' @description This function preprocesses the design matrix by removing those
+#' @description This function preprocesses the design matrix by removing
 #' columns that contain \code{NA}'s or are all zero. It also standardizes
-#' non-binary columns to have mean zero and variance one.
+#' non-binary columns to have mean zero and variance one. The user has the
+#' choice of log transforming continuous covariates before scaling them.
 #' @param X The \code{n} times \code{p} design matrix. The columns should
 #' represent genes and rows represent the observations. The column names are
 #' used as gene names so they should not be left as \code{NULL}. Note that the
 #' input matrix \code{X} should NOT contain vector of \code{1}'s representing
 #' the intercept.
+#' @param logT A boolean variable determining if log transform should be done
+#' on continuous columns before scaling them. Note that those columns should
+#' not contain any zeros or negative values.
 #' @author Amir Nikooienejad
 #' @return It returns a list having the following objects:
 #' \item{X}{The filtered design matrix which can be used in variable selection
@@ -38,20 +42,22 @@
 #' Xout <- PreProcess(X)
 #' dim(Xout$X)[2] == (p + 1) ## 1 is added because intercept column is included
 #' ## This is FALSE because of the removal of columns with NA elements
-PreProcess <- function(X){
+PreProcess <- function(X, logT = FALSE){
   Xin <- X
 
-  ex0 <- which(apply(Xin,2,function(x) all(x==0)))
+  ex0 <- which(apply(Xin,2,function(x) all(x==0))) 
   if (length(ex0)) Xin <- Xin[,-ex0]
   
-  ex1 <- which(colSums(is.na(Xin)) != 0) # NA removal from the covariates
+  ex1 <- which(colSums(is.na(Xin)) != 0)
   if (length(ex1)) Xin <- Xin[, -ex1]
-  
+
   XX2 <- Xin
-  bincols <- which(apply(Xin, 2, function(x) {all(na.omit(x) %in% 0:1)}))
+  bincols <- which(apply(Xin, 2, function(x) {all(x %in% 0:1)}))
   if (length(bincols)){
-    XX2[,-bincols] <- scale(Xin[,-bincols])
-  }else{
+    if(logT) XX2[,-bincols] <- log(XX2[,-bincols])
+    XX2[,-bincols] <- scale(XX2[,-bincols])
+  } else {
+    if(logT) Xin <- log(Xin)
     XX2 <- scale(Xin)
   }
 
