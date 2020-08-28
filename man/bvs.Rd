@@ -4,11 +4,25 @@
 \alias{bvs}
 \title{High dimensional Bayesian variable selection using nonlocal priors}
 \usage{
-bvs(X, resp, prep = TRUE, logT = FALSE, fixed_cols = NULL,
-  eff_size = 0.5, family = c("logistic", "survival"), hselect = TRUE,
-  nlptype = "piMOM", r = 1, tau = 0.25, niter = 30,
-  mod_prior = c("unif", "beta"), inseed = NULL, cplng = FALSE, ncpu = 4,
-  parallel.MPI = FALSE)
+bvs(
+  X,
+  resp,
+  prep = TRUE,
+  logT = FALSE,
+  fixed_cols = NULL,
+  eff_size = 0.5,
+  family = c("logistic", "survival"),
+  hselect = TRUE,
+  nlptype = "piMOM",
+  r = 1,
+  tau = 0.25,
+  niter = 30,
+  mod_prior = c("unif", "beta"),
+  inseed = NULL,
+  cplng = FALSE,
+  ncpu = 4,
+  parallel.MPI = FALSE
+)
 }
 \arguments{
 \item{X}{The \code{n} times \code{p} input data frame containing the
@@ -19,9 +33,10 @@ columns allowed is 3. The input data frame can also contain categorical
 covariates that are appropriately defined as factor variables in R.}
 
 \item{resp}{For logistic regression models it is the binary response
-vector. For Cox proportional hazard models this is a two column matrix
-where the first column contains survival time vector and the second column
-is the censoring status for each observation.}
+vector which could be either numeric or factor variable in R. For the Cox
+proportional hazard models this is a two column matrix where the first
+column contains survival time vector and the second column is the censoring
+status for each observation.}
 
 \item{prep}{A boolean variable determining if the preprocessing step should
 be performed on the design matrix or not. That step contains removing
@@ -111,9 +126,13 @@ of the model space.}
 \item{max_prob}{Maximum unnormalized probability among all visited models}
 \item{HPM}{The indices of the model with highest posterior
 probability among all visited models, with respect to the columns in
-the output \code{des_mat}. The names of the selected columns can be checked
-using \code{gene_names}. The corresponding design matrix is also one
-of the outputs that can be checked in \code{des_mat}.}
+the output \code{des_mat}. This is not necessarily the same as the input
+design matrix due to some changes to categorical variables. The names of
+the selected columns can be checked using \code{gene_names}.
+The corresponding design matrix is also one of the outputs that can be
+checked in \code{des_mat}. If the output is \code{character[0]} it means
+none of the variables of the design matrix is selected in the HPM and
+HPM contains only the intercept.}
 \item{beta_hat}{The coefficient vector for the selected model. The first
 component is always for the intercept.}
 \item{MPM}{The indices of median probability model. According to the paper
@@ -273,9 +292,9 @@ bout$num_vis_models
 Nikooienejad, A., Wang, W., and Johnson, V. E. (2016). Bayesian
 variable selection for binary outcomes in high dimensional genomic studies
 using nonlocal priors. Bioinformatics, 32(9), 1338-1345.\cr\cr
-Nikooienejad, A., Wang, W., and Johnson, V. E. (2017). Bayesian Variable
-Selection in High Dimensional Survival Time Cancer Genomic Datasets using
-Nonlocal Priors. arXiv preprint, arXiv:1712.02964. \cr\cr
+Nikooienejad, A., Wang, W., & Johnson, V. E. (2020). Bayesian variable
+selection for survival data using inverse moment priors. Annals of Applied
+Statistics, 14(2), 809-828. \cr\cr
 Johnson, V. E. (1998). A coupling-regeneration scheme for
 diagnosing convergence in Markov chain Monte Carlo algorithms. Journal of
 the American Statistical Association, 93(441), 238-248.\cr\cr

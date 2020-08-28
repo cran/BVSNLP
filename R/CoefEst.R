@@ -30,9 +30,9 @@
 #' @references Nikooienejad, A., Wang, W., and Johnson, V. E. (2016). Bayesian
 #' variable selection for binary outcomes in high dimensional genomic studies
 #' using non-local priors. Bioinformatics, 32(9), 1338-1345.\cr\cr
-#' Nikooienejad, A., Wang, W., and Johnson, V. E. (2017). Bayesian Variable
-#' Selection in High Dimensional Survival Time Cancer Genomic Datasets using
-#' Nonlocal Priors. arXiv preprint, arXiv:1712.02964.
+#' Nikooienejad, A., Wang, W., & Johnson, V. E. (2020). Bayesian variable
+#' selection for survival data using inverse moment priors. Annals of Applied
+#' Statistics, 14(2), 809-828.
 #' @seealso \code{\link{ModProb}}
 #' @examples
 #' ### Simulating Survival Data

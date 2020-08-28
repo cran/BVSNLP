@@ -5,8 +5,20 @@
 \title{Non-parallel version of Bayesian variable selector for logistic regression
 data using nonlocal priors}
 \usage{
-logreg_bvs(exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng,
-  chain2)
+logreg_bvs(
+  exmat,
+  chain1,
+  nf,
+  tau,
+  r,
+  nlptype,
+  a,
+  b,
+  in_cons,
+  loopcnt,
+  cplng,
+  chain2
+)
 }
 \arguments{
 \item{exmat}{An extended matrix where the first column is binary resonse

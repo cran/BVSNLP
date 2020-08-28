@@ -9,7 +9,7 @@ using namespace Rcpp;
 
 // null_mle_lreg
 Rcpp::NumericVector null_mle_lreg(arma::mat& XX, int n, int p, int cons, double a, double b, double sprob, int niters);
-RcppExport SEXP BVSNLP_null_mle_lreg(SEXP XXSEXP, SEXP nSEXP, SEXP pSEXP, SEXP consSEXP, SEXP aSEXP, SEXP bSEXP, SEXP sprobSEXP, SEXP nitersSEXP) {
+RcppExport SEXP _BVSNLP_null_mle_lreg(SEXP XXSEXP, SEXP nSEXP, SEXP pSEXP, SEXP consSEXP, SEXP aSEXP, SEXP bSEXP, SEXP sprobSEXP, SEXP nitersSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,7 +27,7 @@ END_RCPP
 }
 // logreg_bvs
 Rcpp::List logreg_bvs(const arma::mat& exmat, arma::uvec chain1, int nf, double tau, double r, const int nlptype, int a, int b, int in_cons, int loopcnt, bool cplng, arma::uvec chain2);
-RcppExport SEXP BVSNLP_logreg_bvs(SEXP exmatSEXP, SEXP chain1SEXP, SEXP nfSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP aSEXP, SEXP bSEXP, SEXP in_consSEXP, SEXP loopcntSEXP, SEXP cplngSEXP, SEXP chain2SEXP) {
+RcppExport SEXP _BVSNLP_logreg_bvs(SEXP exmatSEXP, SEXP chain1SEXP, SEXP nfSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP aSEXP, SEXP bSEXP, SEXP in_consSEXP, SEXP loopcntSEXP, SEXP cplngSEXP, SEXP chain2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -49,7 +49,7 @@ END_RCPP
 }
 // lreg_coef_est
 Rcpp::NumericVector lreg_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, const int nlptype);
-RcppExport SEXP BVSNLP_lreg_coef_est(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP) {
+RcppExport SEXP _BVSNLP_lreg_coef_est(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -64,7 +64,7 @@ END_RCPP
 }
 // lreg_mod_prob
 double lreg_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b, const int nlptype);
-RcppExport SEXP BVSNLP_lreg_mod_prob(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP aSEXP, SEXP bSEXP, SEXP nlptypeSEXP) {
+RcppExport SEXP _BVSNLP_lreg_mod_prob(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP aSEXP, SEXP bSEXP, SEXP nlptypeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -81,7 +81,7 @@ END_RCPP
 }
 // null_mle_cox
 Rcpp::NumericVector null_mle_cox(arma::mat& XX, int n, int p, int cons, double a, double b, double csr, int niters);
-RcppExport SEXP BVSNLP_null_mle_cox(SEXP XXSEXP, SEXP nSEXP, SEXP pSEXP, SEXP consSEXP, SEXP aSEXP, SEXP bSEXP, SEXP csrSEXP, SEXP nitersSEXP) {
+RcppExport SEXP _BVSNLP_null_mle_cox(SEXP XXSEXP, SEXP nSEXP, SEXP pSEXP, SEXP consSEXP, SEXP aSEXP, SEXP bSEXP, SEXP csrSEXP, SEXP nitersSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -99,7 +99,7 @@ END_RCPP
 }
 // cox_bvs
 Rcpp::List cox_bvs(const arma::mat& exmat, arma::uvec cur_cols, int nf, double tau, double r, const int nlptype, int a, int b, int d, int L, int J, arma::vec temps);
-RcppExport SEXP BVSNLP_cox_bvs(SEXP exmatSEXP, SEXP cur_colsSEXP, SEXP nfSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP aSEXP, SEXP bSEXP, SEXP dSEXP, SEXP LSEXP, SEXP JSEXP, SEXP tempsSEXP) {
+RcppExport SEXP _BVSNLP_cox_bvs(SEXP exmatSEXP, SEXP cur_colsSEXP, SEXP nfSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP aSEXP, SEXP bSEXP, SEXP dSEXP, SEXP LSEXP, SEXP JSEXP, SEXP tempsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -121,7 +121,7 @@ END_RCPP
 }
 // inc_prob_calc
 arma::vec inc_prob_calc(arma::vec all_probs, Rcpp::List vis_covs, int p);
-RcppExport SEXP BVSNLP_inc_prob_calc(SEXP all_probsSEXP, SEXP vis_covsSEXP, SEXP pSEXP) {
+RcppExport SEXP _BVSNLP_inc_prob_calc(SEXP all_probsSEXP, SEXP vis_covsSEXP, SEXP pSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -134,7 +134,7 @@ END_RCPP
 }
 // cox_coef_est
 Rcpp::NumericVector cox_coef_est(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, const int nlptype);
-RcppExport SEXP BVSNLP_cox_coef_est(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP) {
+RcppExport SEXP _BVSNLP_cox_coef_est(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -149,7 +149,7 @@ END_RCPP
 }
 // cox_mod_prob
 double cox_mod_prob(const arma::mat& exmat, arma::uvec mod_cols, double tau, double r, int a, int b, const int nlptype);
-RcppExport SEXP BVSNLP_cox_mod_prob(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP aSEXP, SEXP bSEXP, SEXP nlptypeSEXP) {
+RcppExport SEXP _BVSNLP_cox_mod_prob(SEXP exmatSEXP, SEXP mod_colsSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP aSEXP, SEXP bSEXP, SEXP nlptypeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -166,7 +166,7 @@ END_RCPP
 }
 // aucBMA_logistic
 Rcpp::List aucBMA_logistic(const arma::mat& X_tr, const arma::vec& y_tr, const arma::mat& X_te, const arma::vec& y_te, double tau, double r, const int nlptype, arma::vec probs, Rcpp::ListOf<Rcpp::IntegerVector> models, int k);
-RcppExport SEXP BVSNLP_aucBMA_logistic(SEXP X_trSEXP, SEXP y_trSEXP, SEXP X_teSEXP, SEXP y_teSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP probsSEXP, SEXP modelsSEXP, SEXP kSEXP) {
+RcppExport SEXP _BVSNLP_aucBMA_logistic(SEXP X_trSEXP, SEXP y_trSEXP, SEXP X_teSEXP, SEXP y_teSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP probsSEXP, SEXP modelsSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -186,7 +186,7 @@ END_RCPP
 }
 // aucBMA_survival
 arma::vec aucBMA_survival(const arma::mat& X_tr, const arma::mat& TS_tr, const arma::mat& X_te, const arma::mat& TS_te, double tau, double r, const int nlptype, arma::vec times, arma::vec probs, Rcpp::ListOf<Rcpp::IntegerVector> models, int k);
-RcppExport SEXP BVSNLP_aucBMA_survival(SEXP X_trSEXP, SEXP TS_trSEXP, SEXP X_teSEXP, SEXP TS_teSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP timesSEXP, SEXP probsSEXP, SEXP modelsSEXP, SEXP kSEXP) {
+RcppExport SEXP _BVSNLP_aucBMA_survival(SEXP X_trSEXP, SEXP TS_trSEXP, SEXP X_teSEXP, SEXP TS_teSEXP, SEXP tauSEXP, SEXP rSEXP, SEXP nlptypeSEXP, SEXP timesSEXP, SEXP probsSEXP, SEXP modelsSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -204,4 +204,24 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(aucBMA_survival(X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_BVSNLP_null_mle_lreg", (DL_FUNC) &_BVSNLP_null_mle_lreg, 8},
+    {"_BVSNLP_logreg_bvs", (DL_FUNC) &_BVSNLP_logreg_bvs, 12},
+    {"_BVSNLP_lreg_coef_est", (DL_FUNC) &_BVSNLP_lreg_coef_est, 5},
+    {"_BVSNLP_lreg_mod_prob", (DL_FUNC) &_BVSNLP_lreg_mod_prob, 7},
+    {"_BVSNLP_null_mle_cox", (DL_FUNC) &_BVSNLP_null_mle_cox, 8},
+    {"_BVSNLP_cox_bvs", (DL_FUNC) &_BVSNLP_cox_bvs, 12},
+    {"_BVSNLP_inc_prob_calc", (DL_FUNC) &_BVSNLP_inc_prob_calc, 3},
+    {"_BVSNLP_cox_coef_est", (DL_FUNC) &_BVSNLP_cox_coef_est, 5},
+    {"_BVSNLP_cox_mod_prob", (DL_FUNC) &_BVSNLP_cox_mod_prob, 7},
+    {"_BVSNLP_aucBMA_logistic", (DL_FUNC) &_BVSNLP_aucBMA_logistic, 10},
+    {"_BVSNLP_aucBMA_survival", (DL_FUNC) &_BVSNLP_aucBMA_survival, 11},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_BVSNLP(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

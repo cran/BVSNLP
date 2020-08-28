@@ -62,9 +62,9 @@
 #' @references Raftery, A. E., Madigan, D., & Hoeting, J. A. (1997). Bayesian
 #' model averaging for linear regression models. Journal of the American
 #' Statistical Association, 92(437), 179-191.\cr\cr
-#' Nikooienejad, A., Wang, W., and Johnson, V. E. (2017). Bayesian Variable
-#' Selection in High Dimensional Survival Time Cancer Genomic Datasets using
-#' Nonlocal Priors. arXiv preprint, arXiv:1712.02964.\cr\cr
+#' Nikooienejad, A., Wang, W., & Johnson, V. E. (2020). Bayesian variable
+#' selection for survival data using inverse moment priors. Annals of Applied
+#' Statistics, 14(2), 809-828. \cr\cr
 #' Uno, H., Cai, T., Tian, L., & Wei, L. J. (2007). Evaluating
 #' prediction rules for t-year survivors with censored regression models.
 #' Journal of the American Statistical Association, 102(478), 527-537.

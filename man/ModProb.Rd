@@ -4,8 +4,17 @@
 \alias{ModProb}
 \title{Logarithm of unnormalized probability of a given model}
 \usage{
-ModProb(X, resp, mod_cols, nlptype = "piMOM", tau, r, a, b,
-  family = c("logistic", "survival"))
+ModProb(
+  X,
+  resp,
+  mod_cols,
+  nlptype = "piMOM",
+  tau,
+  r,
+  a,
+  b,
+  family = c("logistic", "survival")
+)
 }
 \arguments{
 \item{X}{The design matrix. It is assumed that the design matrix has
@@ -76,9 +85,9 @@ Mprob
 Nikooienejad, A., Wang, W., and Johnson, V. E. (2016). Bayesian
 variable selection for binary outcomes in high dimensional genomic studies
 using nonlocal priors. Bioinformatics, 32(9), 1338-1345.\cr\cr
-Nikooienejad, A., Wang, W., and Johnson, V. E. (2017). Bayesian Variable
-Selection in High Dimensional Survival Time Cancer Genomic Datasets using
-Nonlocal Priors. arXiv preprint, arXiv:1712.02964.
+Nikooienejad, A., Wang, W., & Johnson, V. E. (2020). Bayesian variable
+selection for survival data using inverse moment priors. Annals of Applied
+Statistics, 14(2), 809-828.
 }
 \seealso{
 \code{\link{CoefEst}}

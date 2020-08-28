@@ -2,7 +2,7 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 null_mle_lreg <- function(XX, n, p, cons, a, b, sprob, niters) {
-    .Call('BVSNLP_null_mle_lreg', PACKAGE = 'BVSNLP', XX, n, p, cons, a, b, sprob, niters)
+    .Call(`_BVSNLP_null_mle_lreg`, XX, n, p, cons, a, b, sprob, niters)
 }
 
 #' Non-parallel version of Bayesian variable selector for logistic regression
@@ -130,19 +130,19 @@ null_mle_lreg <- function(XX, n, p, cons, a, b, sprob, niters) {
 #' ### The unnormalized probability of the selected model:
 #' bvsout$max_prob
 logreg_bvs <- function(exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng, chain2) {
-    .Call('BVSNLP_logreg_bvs', PACKAGE = 'BVSNLP', exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng, chain2)
+    .Call(`_BVSNLP_logreg_bvs`, exmat, chain1, nf, tau, r, nlptype, a, b, in_cons, loopcnt, cplng, chain2)
 }
 
 lreg_coef_est <- function(exmat, mod_cols, tau, r, nlptype) {
-    .Call('BVSNLP_lreg_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, nlptype)
+    .Call(`_BVSNLP_lreg_coef_est`, exmat, mod_cols, tau, r, nlptype)
 }
 
 lreg_mod_prob <- function(exmat, mod_cols, tau, r, a, b, nlptype) {
-    .Call('BVSNLP_lreg_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b, nlptype)
+    .Call(`_BVSNLP_lreg_mod_prob`, exmat, mod_cols, tau, r, a, b, nlptype)
 }
 
 null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
-    .Call('BVSNLP_null_mle_cox', PACKAGE = 'BVSNLP', XX, n, p, cons, a, b, csr, niters)
+    .Call(`_BVSNLP_null_mle_cox`, XX, n, p, cons, a, b, csr, niters)
 }
 
 #' Non-parallel version of Bayesian variable selector for survival data using
@@ -244,26 +244,26 @@ null_mle_cox <- function(XX, n, p, cons, a, b, csr, niters) {
 #' coxout$max_prob
 #' 
 cox_bvs <- function(exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps) {
-    .Call('BVSNLP_cox_bvs', PACKAGE = 'BVSNLP', exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps)
+    .Call(`_BVSNLP_cox_bvs`, exmat, cur_cols, nf, tau, r, nlptype, a, b, d, L, J, temps)
 }
 
 inc_prob_calc <- function(all_probs, vis_covs, p) {
-    .Call('BVSNLP_inc_prob_calc', PACKAGE = 'BVSNLP', all_probs, vis_covs, p)
+    .Call(`_BVSNLP_inc_prob_calc`, all_probs, vis_covs, p)
 }
 
 cox_coef_est <- function(exmat, mod_cols, tau, r, nlptype) {
-    .Call('BVSNLP_cox_coef_est', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, nlptype)
+    .Call(`_BVSNLP_cox_coef_est`, exmat, mod_cols, tau, r, nlptype)
 }
 
 cox_mod_prob <- function(exmat, mod_cols, tau, r, a, b, nlptype) {
-    .Call('BVSNLP_cox_mod_prob', PACKAGE = 'BVSNLP', exmat, mod_cols, tau, r, a, b, nlptype)
+    .Call(`_BVSNLP_cox_mod_prob`, exmat, mod_cols, tau, r, a, b, nlptype)
 }
 
 aucBMA_logistic <- function(X_tr, y_tr, X_te, y_te, tau, r, nlptype, probs, models, k) {
-    .Call('BVSNLP_aucBMA_logistic', PACKAGE = 'BVSNLP', X_tr, y_tr, X_te, y_te, tau, r, nlptype, probs, models, k)
+    .Call(`_BVSNLP_aucBMA_logistic`, X_tr, y_tr, X_te, y_te, tau, r, nlptype, probs, models, k)
 }
 
 aucBMA_survival <- function(X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k) {
-    .Call('BVSNLP_aucBMA_survival', PACKAGE = 'BVSNLP', X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k)
+    .Call(`_BVSNLP_aucBMA_survival`, X_tr, TS_tr, X_te, TS_te, tau, r, nlptype, times, probs, models, k)
 }
 

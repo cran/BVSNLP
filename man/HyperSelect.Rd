@@ -4,8 +4,15 @@
 \alias{HyperSelect}
 \title{Hyperparameter selection for iMOM prior density}
 \usage{
-HyperSelect(X, resp, eff_size = 0.7, nlptype = "piMOM", iter = 10000,
-  mod_prior = c("unif", "beta"), family = c("logistic", "survival"))
+HyperSelect(
+  X,
+  resp,
+  eff_size = 0.7,
+  nlptype = "piMOM",
+  iter = 10000,
+  mod_prior = c("unif", "beta"),
+  family = c("logistic", "survival")
+)
 }
 \arguments{
 \item{X}{The design matrix. \code{NA}'s should be removed and columns be
